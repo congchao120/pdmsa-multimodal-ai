@@ -1,0 +1,4 @@
+# Install torch and torchvision for the required CUDA/CPU platform first:
+# https://pytorch.org/get-started/locally/
+-r requirements/classification.txt
+-e .

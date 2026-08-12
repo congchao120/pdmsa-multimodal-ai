@@ -1,0 +1,70 @@
+# Source-aligned ViT + multi-slice voting configuration.
+# The classifier reads already fused three-channel RGB PNG files. The meaning of
+# the RGB channels is determined by the modality-combination preprocessing run.
+
+seed = 42
+output_dir = "../outputs/fdg_cft_t2wi"
+
+# Source label encoding: 0 = MSA-P, 1 = PD. Sensitivity is therefore PD recall.
+positive_label = 1
+
+[data]
+manifest = "../data/example_manifest.csv"
+root = ".."
+image_column = "fused_path"
+slice_indices = [6, 7, 8, 9, 10]
+expected_slices = 5
+image_size = 224
+
+[splits]
+n_folds = 4
+stratified = true
+assignments_file = "../outputs/fdg_cft_t2wi/fold_assignments.csv"
+
+[model]
+name_or_path = "google/vit-base-patch16-224"
+# Pin a verified Hugging Face revision before freezing a reproducible release.
+# revision = "<commit>"
+num_labels = 2
+local_files_only = false
+ignore_mismatched_sizes = true
+
+[training]
+epochs = 100
+batch_size = 64
+optimizer = "adam"
+learning_rate = 0.001
+weight_decay = 0.0
+num_workers = 4
+amp = false
+selection_metric = "val_accuracy"
+
+# Optional extension requested for imbalanced-data experiments. It is disabled
+# here because augmentation was absent from the retained source run.
+[augmentation]
+enabled = false
+rotation_degrees = 5.0
+translation_fraction = 0.02
+scale_min = 0.95
+scale_max = 1.05
+brightness = 0.10
+contrast = 0.10
+horizontal_flip_probability = 0.0
+
+# Allowed: none, weighted_sampler, class_weighted_loss, both.
+# "none" reproduces the retained source; use one alternative only in a declared run.
+[imbalance]
+strategy = "none"
+
+[voting]
+method = "weighted_soft"
+# Ordered by ascending slice_index: 6, 7, 8, 9, 10.
+weights = [0.05, 0.05, 0.80, 0.05, 0.05]
+patient_threshold = 0.50
+# The retained voting script used score > 0.5, not score >= 0.5.
+threshold_inclusive = false
+
+[gradcam]
+# Retained visualization script targeted class 0 (MSA-P) at encoder layer 8.
+target_class = 0
+target_layer_index = 8

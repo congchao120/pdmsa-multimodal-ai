@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdmsa-multimodal-ai"
+version = "0.1.0"
+description = "ViT and multi-slice voting for fused PET/MRI differentiation of PD and MSA-P"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+authors = [
+  {name = "Chao Cong"},
+  {name = "Xuewei Zhang"},
+  {name = "Shams Tabrez Rifat"},
+  {name = "Hongyun Tan"},
+  {name = "Jinju Sun"},
+  {name = "Wenping Peng"},
+  {name = "Xiao Chen"},
+]
+keywords = [
+  "Parkinson's disease",
+  "multiple system atrophy",
+  "PET",
+  "MRI",
+  "Vision Transformer",
+  "Grad-CAM",
+]
+dependencies = [
+  "numpy>=1.24,<3",
+  "pandas>=2.0,<3",
+  "Pillow>=10,<12",
+  "scikit-learn>=1.3,<2",
+  "transformers>=4.31,<5",
+  "tomli>=2,<3; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+# Install the platform-appropriate PyTorch build first; see README.md.
+classification = [
+  "torch>=1.13.1,<3",
+  "torchvision>=0.14.1,<1",
+]
+explainability = [
+  "grad-cam>=1.5,<2",
+  "opencv-python-headless>=4.8,<5",
+]
+dev = [
+  "pytest>=8,<9",
+  "ruff>=0.6,<1",
+]
+
+[project.urls]
+Repository = "https://github.com/congchao120/pdmsa-multimodal-ai"
+Issues = "https://github.com/congchao120/pdmsa-multimodal-ai/issues"
+
+[project.scripts]
+pdmsa-make-splits = "pdmsa.cli:make_splits_main"
+pdmsa-train-fold = "pdmsa.cli:train_fold_main"
+pdmsa-aggregate-msv = "pdmsa.cli:aggregate_msv_main"
+pdmsa-evaluate-oof = "pdmsa.cli:evaluate_oof_main"
+pdmsa-audit-manifest = "pdmsa.cli:audit_manifest_main"
+pdmsa-gradcam = "pdmsa.cli:gradcam_main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

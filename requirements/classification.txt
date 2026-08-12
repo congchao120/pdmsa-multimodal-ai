@@ -1,0 +1,8 @@
+# Runtime dependencies for manifest handling, splitting, ViT classification, and metrics.
+# PyTorch/torchvision are intentionally installed separately to select the correct CUDA build.
+numpy>=1.24,<3
+pandas>=2.0,<3
+Pillow>=10,<12
+scikit-learn>=1.3,<2
+transformers>=4.31,<5
+tomli>=2,<3; python_version < "3.11"

@@ -1,0 +1,77 @@
+# Python environments, caches, and build products
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+dist/
+build/
+
+# Clinical/private data. Keep only the explicitly synthetic public examples.
+data/*
+!data/README.md
+!data/example_manifest.csv
+*.csv
+*.tsv
+*.xlsx
+*.xls
+!data/example_manifest.csv
+private_data/
+raw_data/
+derived_data/
+
+# Medical-image formats and metadata containers
+*.dcm
+*.dicom
+*.ima
+DICOMDIR
+*.nii
+*.nii.gz
+*.nrrd
+*.mha
+*.mhd
+*.img
+*.hdr
+*.mgz
+*.mat
+
+# Checkpoints, arrays, experiment outputs, and tracking logs
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.joblib
+outputs/
+checkpoints/
+runs/
+logs/
+wandb/
+mlruns/
+
+# Local configuration, credentials, and keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.*
+
+# IDE / operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

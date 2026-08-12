@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "status": "TO_BE_FILLED_FROM_TRAINING_SERVER",
+  "release": {
+    "repository": "TO_BE_FILLED",
+    "tag": "TO_BE_FILLED",
+    "asset_name": "TO_BE_FILLED.zip",
+    "asset_size_bytes": null,
+    "asset_sha256": "TO_BE_FILLED"
+  },
+  "upstream_nnunet": {
+    "distribution": "nnunetv2",
+    "version": "TO_BE_FILLED",
+    "git_repository": "https://github.com/MIC-DKFZ/nnUNet",
+    "git_commit": "TO_BE_FILLED"
+  },
+  "runtime": {
+    "python": "TO_BE_FILLED",
+    "pytorch": "TO_BE_FILLED",
+    "cuda": "TO_BE_FILLED",
+    "operating_system": "TO_BE_FILLED"
+  },
+  "dataset": {
+    "dataset_id": "TO_BE_FILLED",
+    "dataset_name": "TO_BE_FILLED",
+    "dataset_json_sha256": "TO_BE_FILLED",
+    "input_channel_mapping": "TO_BE_FILLED",
+    "segmentation_label_mapping": "TO_BE_FILLED"
+  },
+  "configuration": {
+    "trainer": "TO_BE_FILLED",
+    "plans_identifier": "TO_BE_FILLED",
+    "configuration": "TO_BE_FILLED",
+    "folds": [
+      "TO_BE_FILLED"
+    ],
+    "checkpoint_name": "checkpoint_final.pth"
+  },
+  "commands": {
+    "plan": "TO_BE_FILLED",
+    "train": "TO_BE_FILLED",
+    "predict": "TO_BE_FILLED"
+  },
+  "artifact_inventory": [
+    {
+      "path": "TO_BE_FILLED",
+      "sha256": "TO_BE_FILLED",
+      "size_bytes": null
+    }
+  ],
+  "provenance": {
+    "trained_at": "TO_BE_FILLED",
+    "training_split_sha256": "TO_BE_FILLED",
+    "notes": "Remove all subject identifiers and protected health information before release."
+  }
+}

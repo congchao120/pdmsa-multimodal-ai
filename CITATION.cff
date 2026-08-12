@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite this repository release and the associated article
+  once its bibliographic record is available.
+title: "PD/MSA-P Multimodal PET/MRI Classification Pipeline"
+type: software
+version: 0.1.0
+repository-code: "https://github.com/congchao120/pdmsa-multimodal-ai"
+authors:
+  - family-names: "Cong"
+    given-names: "Chao"
+  - family-names: "Zhang"
+    given-names: "Xuewei"
+  - family-names: "Rifat"
+    given-names: "Shams Tabrez"
+  - family-names: "Tan"
+    given-names: "Hongyun"
+  - family-names: "Sun"
+    given-names: "Jinju"
+  - family-names: "Peng"
+    given-names: "Wenping"
+  - family-names: "Chen"
+    given-names: "Xiao"
+# Add the article DOI, release date, and approved SPDX license only after they are assigned.

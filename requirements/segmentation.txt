@@ -1,0 +1,11 @@
+# The wrapper in scripts/segmentation/nnunet_pipeline.py uses only the Python standard library.
+#
+# Install nnU-Net v2 separately at the exact revision verified on the original training server.
+# The retained source tree's setup metadata reports 2.1.1, but that does not prove which package
+# or Git commit produced the released checkpoint. Therefore this file intentionally does not
+# fabricate an exact pin. After server verification, add exactly one reproducible requirement:
+#
+# nnunetv2==<VERIFIED_RELEASE>
+#
+# or, when the environment used an official Git revision:
+# nnunetv2 @ git+https://github.com/MIC-DKFZ/nnUNet.git@<VERIFIED_COMMIT>
