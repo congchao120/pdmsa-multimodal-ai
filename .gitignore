@@ -58,6 +58,13 @@ logs/
 wandb/
 mlruns/
 
+# nnU-Net runtime trees and generated case-level split files. These may contain
+# clinical images, labels, pseudonymous case identifiers, or large artifacts.
+nnUNet_raw/
+nnUNet_preprocessed/
+nnUNet_results/
+splits_final.json
+
 # Local configuration, credentials, and keys
 .env
 .env.*

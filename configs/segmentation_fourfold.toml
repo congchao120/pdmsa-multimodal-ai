@@ -1,0 +1,81 @@
+# Auditable nnU-Net v2 four-fold retraining recipe for Dataset800_PD.
+#
+# This is an executable configuration input for the repository wrappers as well
+# as a methods record. It contains no case IDs, paths, split assignments, images,
+# labels, predictions, or trained parameters. The downloaded result directory
+# contains five folds; those checkpoints are not outputs of this four-fold run.
+
+schema_version = 1
+status = "configuration_only_not_yet_rerun"
+
+[study]
+dataset_id = 800
+dataset_name = "Dataset800_PD"
+num_training_cases = 156
+file_ending = ".nii.gz"
+channel_names = ["FLAIR", "T1w", "T2w"]
+channel_indices = [0, 1, 2]
+label_names = ["background", "Region 1", "Region 2", "Region 3", "Region 4"]
+label_values = [0, 1, 2, 3, 4]
+# The retained metadata uses generic region names. Do not infer anatomy.
+anatomical_label_mapping_confirmed = false
+
+[split]
+# Matches nnU-Net v2's default split construction, changing only 5 folds to 4:
+# sorted case keys + sklearn KFold(shuffle=true, random_state=12345).
+n_splits = 4
+seed = 12345
+shuffle = true
+stratified = false
+folds = [0, 1, 2, 3]
+expected_train_cases_per_fold = 117
+expected_validation_cases_per_fold = 39
+output_name = "splits_final.json"
+case_list_required_at_runtime = true
+
+[model]
+framework = "nnU-Net v2"
+trainer = "nnUNetTrainer_100epochs"
+base_trainer = "nnUNetTrainer"
+plans = "nnUNetPlans"
+configuration = "3d_fullres"
+network_class = "PlainConvUNet"
+checkpoint_name = "checkpoint_final.pth"
+
+[training]
+epochs = 100
+batch_size = 2
+# Axis order follows the retained nnUNetPlans 3d_fullres configuration.
+patch_size = [20, 320, 256]
+target_spacing = [5.999997615814209, 0.71875, 0.7187499403953552]
+normalization = ["ZScoreNormalization", "ZScoreNormalization", "ZScoreNormalization"]
+optimizer = "SGD"
+initial_learning_rate = 0.01
+momentum = 0.99
+nesterov = true
+weight_decay = 0.00003
+foreground_oversampling_fraction = 0.33
+loss = "Dice plus cross-entropy with deep supervision"
+
+[inference]
+save_probabilities = true
+step_size = 0.5
+use_gaussian = true
+use_mirroring = true
+
+[software_evidence]
+# Evidence read from retained metadata/logs; this is not a portable lock file.
+retained_source_version_label = "2.1.1"
+retained_source_exact_commit = "unverified"
+pytorch = "2.0.1+cu117"
+cudnn = "8.5.0"
+gpu = "NVIDIA GeForce RTX 3080"
+
+[publication]
+training_images_in_repository = false
+segmentation_labels_in_repository = false
+case_ids_in_repository = false
+split_assignments_in_repository = false
+model_weights_in_repository = false
+fourfold_run_completed = false
+metrics_from_this_fourfold_run_available = false

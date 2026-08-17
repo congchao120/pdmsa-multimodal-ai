@@ -60,6 +60,14 @@ patch-16/224 scripts. This is a source-code default, not proof that the submitte
 that checkpoint. Update the configuration and Methods together after checking the final model
 directory, training log, or checkpoint metadata.
 
+## nnU-Net four-fold recipe
+
+The public segmentation workflow generates a four-fold `splits_final.json` (folds 0--3,
+seed 12345) and uses the built-in `nnUNetTrainer_100epochs` variant. The retained result
+directory contains an earlier five-fold model; those checkpoints are not redistributed or
+relabeled. The four-fold configuration is a retraining recipe and must not be cited as having
+produced an existing result until all four folds are actually rerun and archived.
+
 ## MSV definition
 
 ViT self-attention operates within a slice. MSV is a separate patient-level aggregation step and

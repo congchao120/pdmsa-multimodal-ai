@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Generate a deterministic four-fold nnU-Net splits_final.json file."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+from pathlib import Path
+import sys
+from typing import Iterable
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SRC_DIRECTORY = PROJECT_ROOT / "src"
+if str(SRC_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SRC_DIRECTORY))
+
+from pdmsa.segmentation_splits import (  # noqa: E402
+    discover_case_ids,
+    make_kfold_splits,
+    read_case_ids,
+    validate_splits,
+    write_splits_final,
+)
+
+
+def _integer_at_least_two(value: str) -> int:
+    number = int(value)
+    if number < 2:
+        raise argparse.ArgumentTypeError("value must be at least 2")
+    return number
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Create deterministic, balanced nnU-Net train/validation splits. "
+            "Only case identifiers are read; image and label contents are never opened."
+        )
+    )
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        "--labels-dir",
+        type=Path,
+        help="nnU-Net labelsTr directory; case IDs are derived from filenames.",
+    )
+    source.add_argument(
+        "--case-list",
+        type=Path,
+        help="UTF-8 text file containing one case ID per line.",
+    )
+    parser.add_argument(
+        "--file-ending",
+        default=".nii.gz",
+        help="Label filename ending from dataset.json (default: .nii.gz).",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Destination splits_final.json path.",
+    )
+    parser.add_argument(
+        "--n-splits",
+        type=_integer_at_least_two,
+        default=4,
+        help="Number of folds (default: 4).",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=12345,
+        help="KFold random state used by retained nnU-Net v2 do_split (default: 12345).",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace an existing output only after it has been reviewed or backed up.",
+    )
+    return parser
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def main(argv: Iterable[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(list(argv) if argv is not None else None)
+    try:
+        if args.labels_dir is not None:
+            case_ids = discover_case_ids(args.labels_dir, file_ending=args.file_ending)
+            source_description = "labelsTr filenames"
+        else:
+            case_ids = read_case_ids(args.case_list)
+            source_description = "case-list file"
+
+        splits = make_kfold_splits(case_ids, n_splits=args.n_splits, seed=args.seed)
+        validation_sizes = validate_splits(splits, case_ids, n_splits=args.n_splits)
+        output = write_splits_final(args.output, splits, overwrite=args.overwrite)
+
+        print(f"Cases read from {source_description}: {len(case_ids)}")
+        print(f"Folds: {args.n_splits}; seed: {args.seed}; validation sizes: {validation_sizes}")
+        print(f"Wrote: {output.resolve()}")
+        print(f"SHA-256: {_sha256(output)}")
+        print("Audit: every case appears in validation exactly once; no train/val overlap.")
+        return 0
+    except (FileNotFoundError, NotADirectoryError, FileExistsError, OSError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

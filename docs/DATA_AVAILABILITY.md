@@ -2,10 +2,12 @@
 
 ## Manuscript-ready statement
 
-> The classification source code, synthetic manifest example, configuration templates, and
-> instructions for reproducing ViT classification, multi-slice voting, and Grad-CAM are available
-> at <https://github.com/congchao120/pdmsa-multimodal-ai>. No clinical images or direct subject
-> identifiers are included. The clinical imaging data cannot be publicly distributed because
+> The source code, synthetic manifest example, configuration templates, a four-fold nnU-Net
+> segmentation training recipe, and instructions for reproducing ViT classification,
+> multi-slice voting, and Grad-CAM are available at
+> <https://github.com/congchao120/pdmsa-multimodal-ai>. No clinical images, segmentation labels,
+> subject-level split assignments, model weights, or direct subject identifiers are included.
+> The clinical imaging data cannot be publicly distributed because
 > they contain potentially identifiable medical information and are governed by institutional
 > ethics approval, participant consent, and institutional policy. Access to appropriately
 > de-identified data may be considered upon reasonable request to the corresponding author,

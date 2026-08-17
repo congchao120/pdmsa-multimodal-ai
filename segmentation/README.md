@@ -1,45 +1,31 @@
-# nnU-Net model artifacts
+# nnU-Net four-fold segmentation recipe
 
-This directory contains only the publication metadata template. The study used the official
-nnU-Net v2 implementation without a study-specific fork, so its source is not duplicated here.
-The thin wrapper at `scripts/segmentation/nnunet_pipeline.py` invokes the official commands.
+This directory contains metadata for a reproducible **four-fold retraining recipe**. The public
+repository intentionally excludes images, manual segmentation labels, real subject identifiers,
+the generated `splits_final.json`, logs, predictions, and model weights.
 
-## What to publish
+The recipe uses Dataset 800 (`Dataset800_PD`), the `3d_fullres` configuration, `nnUNetPlans`, and
+folds 0--3. Its three channels are FLAIR, T1w, and T2w. The retained dataset metadata names the
+four foreground classes only as `Region 1` through `Region 4`; anatomical names must not be
+inferred until they are independently verified.
 
-Publish the trained model as a versioned GitHub Release asset (or a DOI-backed archive) rather
-than committing a large `.pth` file to Git. Preserve the official results hierarchy, for example:
+The retained training logs report 100 epochs, while the base trainer in the retained source tree
+currently defaults to 200. The public recipe therefore selects the existing nnU-Net trainer
+variant `nnUNetTrainer_100epochs` explicitly. No custom neural-network implementation is needed.
 
-```text
-DatasetXXX_Name/
-└── Trainer__Plans__Configuration/
-    ├── dataset.json
-    ├── plans.json
-    └── fold_0/
-        └── checkpoint_final.pth
-```
+`model_manifest.json` records the machine-readable recipe and publication status. Full setup,
+split-generation, training, and inference commands are in `docs/SEGMENTATION.md`.
 
-Include every trained fold used by inference. Also include `model_manifest.json`, the verified
-split definition, and any post-processing configuration. Fill every `TO_BE_FILLED` value from
-the original training server; do not infer these fields from the manuscript.
+## Scope and provenance
 
-A `.pth` file by itself is insufficient: nnU-Net prediction also depends on the dataset ID and
-channel/label mapping, plans, trainer class, configuration, fold(s), checkpoint name, upstream
-software revision, and preprocessing/post-processing contract.
+The downloaded result directory contains folds 0--4. Those five-fold checkpoints are not outputs
+of this four-fold recipe and must not be renamed as folds 0--3. The public setup is a rerunnable
+protocol; until all four folds have actually been trained and evaluated, it must not be presented
+as the source of reported segmentation or classification results.
 
-## Integrity and privacy
+## Privacy
 
-Generate SHA-256 checksums after creating the final archive and record both the archive checksum
-and per-file checksums in `model_manifest.json`. The wrapper can calculate and verify a checksum:
-
-```bash
-python scripts/segmentation/nnunet_pipeline.py check \
-  --raw-dir /path/to/nnUNet_raw \
-  --preprocessed-dir /path/to/nnUNet_preprocessed \
-  --results-dir /path/to/nnUNet_results \
-  --artifact /path/to/release-asset.zip \
-  --expected-sha256 64_HEXADECIMAL_CHARACTERS
-```
-
-Do not release DICOM data, original filenames, subject IDs, filesystem paths, logs containing
-identifiers, or any other protected health information. Model publication should be reviewed
-under the study's ethics and data-governance requirements.
+Generate `splits_final.json` locally from the authorized dataset. The generator prints counts but
+not case IDs. Before publishing any later artifact, remove subject identifiers, private filesystem
+paths, logs containing identifiers, raw scans, labels, and predictions, and complete the required
+ethics and data-governance review.

@@ -33,9 +33,10 @@ different from attention. A slice can therefore have both a class probability an
 map without either quantity being an "MSV attention score."
 
 Atlas-guided striatal segmentation is a separate preprocessing stage. The study used MNI152
-standard space with SPM and the Neuromorphometrics atlas. Because the study did not modify
-nnU-Net, its upstream source is not copied into this repository; a thin runner and artifact
-requirements are documented in [the segmentation guide](docs/SEGMENTATION.md).
+standard space with SPM and the Neuromorphometrics atlas. This repository includes a true
+four-fold nnU-Net retraining recipe, a deterministic split generator, and guarded batch
+training/inference commands. It does not copy the upstream nnU-Net source or distribute scans,
+labels, real case assignments, or weights; see [the segmentation guide](docs/SEGMENTATION.md).
 
 ## Labels and input contract
 
@@ -110,6 +111,9 @@ nnU-Net is intentionally absent from these requirements. Install the official nn
 in a separate segmentation environment and preserve the exact upstream version with the model
 artifacts; do not assume an unavailable `nnunetv2==2.1.1` PyPI pin.
 
+For the separate segmentation environment and the verified installation procedure, use
+`requirements/segmentation.txt` together with [the segmentation guide](docs/SEGMENTATION.md).
+
 ## Classification workflow
 
 The runnable configuration is [configs/classification.toml](configs/classification.toml).
@@ -183,6 +187,32 @@ the raw activation map, overlay, class probabilities, target class/layer, checkp
 input identifier together. A Grad-CAM image explains one classifier decision; it is not a
 probability assigned by MSV to that slice.
 
+## nnU-Net four-fold segmentation
+
+The runnable methods record is
+[configs/segmentation_fourfold.toml](configs/segmentation_fourfold.toml). It fixes folds 0--3,
+the nnU-Net-compatible split seed, `3d_fullres` plans, and the built-in
+`nnUNetTrainer_100epochs` variant. Generate the private `splits_final.json` locally, preview all
+commands, and then train:
+
+```bash
+python scripts/segmentation/make_fourfold_splits.py \
+  --labels-dir /secure/nnUNet_raw/Dataset800_PD/labelsTr \
+  --output /secure/nnUNet_preprocessed/Dataset800_PD/splits_final.json
+
+python scripts/segmentation/nnunet_pipeline.py train-fourfold \
+  --raw-dir /secure/nnUNet_raw \
+  --preprocessed-dir /secure/nnUNet_preprocessed \
+  --results-dir /secure/nnUNet_results \
+  --study-config configs/segmentation_fourfold.toml \
+  --dry-run
+```
+
+Real training is refused unless `splits_final.json` is a valid four-fold partition. The retained
+server directory contained older folds 0--4; those checkpoints are not renamed or claimed as
+outputs of this new four-fold recipe. The four-fold run is marked as not yet completed until it
+is actually rerun.
+
 ## Class imbalance options
 
 The configuration supports `none`, `weighted_sampler`, `class_weighted_loss`, and `both`.
@@ -197,11 +227,12 @@ subjects; patient-level splitting, balanced metrics, and confidence intervals re
 ## Repository layout
 
 ```text
-configs/                 Classification and registration configuration templates
+configs/                 Classification, registration, and segmentation configurations
 data/                    Synthetic manifest plus private-data instructions
 docs/                    Methods, availability, segmentation, and release notes
 requirements/            Classification, explainability, and development dependencies
-scripts/                 Standalone preprocessing/segmentation helpers
+scripts/                 Standalone preprocessing and guarded nnU-Net helpers
+segmentation/            Privacy-safe metadata and dataset.json template (no weights)
 src/pdmsa/               Classification, MSV, metrics, and Grad-CAM implementation
 tests/                   Unit tests and leakage checks
 ```
@@ -212,10 +243,10 @@ Clinical images and direct identifiers are not distributed. The intended public 
 <https://github.com/congchao120/pdmsa-multimodal-ai>; see
 [the availability statement](docs/DATA_AVAILABILITY.md) for the manuscript wording.
 
-Large nnU-Net checkpoints should be published as a versioned GitHub Release asset or in a durable
-research archive rather than committed to Git. A `.pth` file alone is insufficient: distribute
-its SHA-256 checksum together with the nnU-Net version, trainer, plans, configuration, fold,
-`dataset.json`, and required inference metadata. Never include training images or identifiers.
+No nnU-Net checkpoint is distributed in this release. If weights are published later, use a
+versioned release or durable research archive rather than ordinary Git, and include checksums,
+the nnU-Net revision, trainer, plans, configuration, folds, and inference metadata. A standalone
+`.pth` file is not a reproducible model release. Never include training images or identifiers.
 
 Citation metadata are provided in [CITATION.cff](CITATION.cff). No software license has yet been
 selected in this release candidate; the copyright holders and institutions must approve a license
