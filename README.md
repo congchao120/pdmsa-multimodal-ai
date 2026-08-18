@@ -155,12 +155,12 @@ computing the final subject-level result.
    ```bash
    pdmsa-aggregate-msv --input outputs/oof_slice_predictions.csv \
      --output outputs/oof_subject_predictions.csv \
-     --method weighted_soft --weights 0.05 0.05 0.80 0.05 0.05 \
+     --method weighted_soft --weights 0.1 0.2 0.4 0.2 0.1 \
      --positive-label 1
 
    pdmsa-evaluate-oof --input outputs/oof_slice_predictions.csv \
      --output-dir outputs/oof_evaluation --expected-subjects 155 \
-     --method weighted_soft --weights 0.05 0.05 0.80 0.05 0.05 \
+     --method weighted_soft --weights 0.1 0.2 0.4 0.2 0.1 \
      --positive-label 1
    ```
 
