@@ -326,7 +326,7 @@ def train_fold(config: dict[str, Any], fold: int) -> Path:
     voting_config = config.get("voting", {})
     patient_threshold = float(voting_config.get("patient_threshold", 0.5))
     voting_method = str(voting_config.get("method", "weighted_soft"))
-    voting_weights = voting_config.get("weights", [0.05, 0.05, 0.8, 0.05, 0.05])
+    voting_weights = voting_config.get("weights", [0.1, 0.2, 0.4, 0.2, 0.1])
     threshold_inclusive = bool(voting_config.get("threshold_inclusive", False))
     subject_predictions = aggregate_slice_predictions(
         slice_predictions,
