@@ -171,7 +171,7 @@ def _train_one_slice(
         if imbalance_strategy in {"weighted_sampler", "both"}
         else None
     )
-    batch_size = int(training_config.get("batch_size", 64))
+    batch_size = int(training_config.get("batch_size", 32))
     workers = int(training_config.get("num_workers", 4))
     run_seed = seed + fold * 100 + slice_index
     seed_everything(run_seed)
@@ -219,7 +219,7 @@ def _train_one_slice(
     layer_output.mkdir(parents=True, exist_ok=True)
     best_path = layer_output / "best_model_weights.pth"
     history: list[dict[str, float | int]] = []
-    for epoch in range(int(training_config.get("epochs", 100))):
+    for epoch in range(int(training_config.get("epochs", 150))):
         train_loss, train_accuracy = _run_epoch(
             model, loaders["train"], criterion, device, optimizer=optimizer, scaler=scaler
         )
