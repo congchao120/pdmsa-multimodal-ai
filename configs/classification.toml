@@ -14,7 +14,7 @@ root = ".."
 image_column = "fused_path"
 slice_indices = [6, 7, 8, 9, 10]
 expected_slices = 5
-image_size = 224
+image_size = 384
 
 [splits]
 n_folds = 4
@@ -22,7 +22,7 @@ stratified = true
 assignments_file = "../outputs/fdg_cft_t2wi/fold_assignments.csv"
 
 [model]
-name_or_path = "google/vit-base-patch16-224"
+name_or_path = "google/vit-base-patch16-384"
 # Pin a verified Hugging Face revision before freezing a reproducible release.
 # revision = "<commit>"
 num_labels = 2
@@ -30,8 +30,8 @@ local_files_only = false
 ignore_mismatched_sizes = true
 
 [training]
-epochs = 100
-batch_size = 64
+epochs = 150
+batch_size = 32
 optimizer = "adam"
 learning_rate = 0.001
 weight_decay = 0.0
@@ -59,7 +59,7 @@ strategy = "none"
 [voting]
 method = "weighted_soft"
 # Ordered by ascending slice_index: 6, 7, 8, 9, 10.
-weights = [0.05, 0.05, 0.80, 0.05, 0.05]
+weights = [0.1, 0.2, 0.40, 0.2, 0.1]
 patient_threshold = 0.50
 # The retained voting script used score > 0.5, not score >= 0.5.
 threshold_inclusive = false
