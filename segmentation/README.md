@@ -18,10 +18,9 @@ split-generation, training, and inference commands are in `docs/SEGMENTATION.md`
 
 ## Scope and provenance
 
-The downloaded result directory contains folds 0--4. Those five-fold checkpoints are not outputs
-of this four-fold recipe and must not be renamed as folds 0--3. The public setup is a rerunnable
-protocol; until all four folds have actually been trained and evaluated, it must not be presented
-as the source of reported segmentation or classification results.
+The public setup is a rerunnable protocol; until all four folds have actually been trained and 
+evaluated, it must not be presented as the source of reported segmentation or classification 
+results.
 
 ## Privacy
 
