@@ -119,12 +119,9 @@ For the separate segmentation environment and the verified installation procedur
 The runnable configuration is [configs/classification.toml](configs/classification.toml).
 Paths are resolved relative to that file unless documented otherwise.
 
-Its current defaults (`vit-base-patch16-224`, 224-pixel input, 100 epochs, and batch size 64)
-correspond to the retained layer-specific source scripts. Other retained scripts use 384-pixel
-input, while the manuscript reports batch size 32 and 150 epochs without resolving which
-checkpoint produced the submitted table. If the final checkpoint is identified as a 384-pixel
-run, update the configuration and documentation together; the present defaults must not be cited
-as independently verified manuscript hyperparameters.
+Its current defaults (`vit-base-patch16-384`, 384-pixel input, 150 epochs, and batch size 32)
+correspond to the retained layer-specific source scripts. Other retained scripts use 224-pixel
+input, while the manuscript reports batch size 64 and 100 epochs.
 
 1. Audit the manifest and, when images are locally available, verify every path:
 
