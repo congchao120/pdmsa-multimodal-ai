@@ -1,4 +1,4 @@
-# Source-aligned ViT + multi-slice voting configuration.
+# Manuscript-aligned reference ViT + multi-slice voting configuration.
 # The classifier reads already fused three-channel RGB PNG files. The meaning of
 # the RGB channels is determined by the modality-combination preprocessing run.
 
