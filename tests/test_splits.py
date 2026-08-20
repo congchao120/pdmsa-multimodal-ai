@@ -15,9 +15,16 @@ class SplitTests(unittest.TestCase):
         for label, count in ((0, 20), (1, 8)):
             for subject_index in range(count):
                 subject_id = f"L{label}_{subject_index:03d}"
-                for slice_index in (6, 7, 8, 9, 10):
+                center = 5 + (subject_index % 9)
+                for slice_offset in (-2, -1, 0, 1, 2):
                     rows.append(
-                        {"subject_id": subject_id, "label": label, "slice_index": slice_index}
+                        {
+                            "subject_id": subject_id,
+                            "label": label,
+                            "center_slice_index": center,
+                            "slice_offset": slice_offset,
+                            "slice_index": center + slice_offset,
+                        }
                     )
         self.manifest = pd.DataFrame(rows)
 

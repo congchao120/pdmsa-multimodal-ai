@@ -7,14 +7,17 @@ device and must not be used as a stand-alone clinical diagnostic system.
 
 ## Inputs
 
-Five axial, striatal ROI slices (indices 6 through 10) per subject. Each classifier input is an
-already fused RGB PNG, for example an FDG+CFT+T2WI pseudo-color image. Its RGB-to-modality mapping
-must be recorded during preprocessing and is not inferred by the classifier.
+Five axial striatal-ROI slices per subject, dynamically selected at relative positions
+`[-2, -1, 0, 1, 2]` around that subject's largest-ROI-area center. Each classifier input is an
+already fused 384 x 384 RGB PNG, for example an FDG+CFT+T2WI pseudo-color image. Its
+RGB-to-modality mapping must be recorded during preprocessing and is not inferred by the
+classifier. One shared ViT checkpoint per fold is applied to every relative slice position.
 
 ## Outputs
 
-Slice-level class scores and a patient-level aggregate score. The positive disease class, voting
-method, and threshold must be stated in each run configuration and publication table.
+Slice-level class scores and a patient-level aggregate score. Weighted MSV uses fixed relative
+position weights `[0.10, 0.20, 0.40, 0.20, 0.10]`. The positive disease class, voting method, and
+threshold must be stated in each run configuration and publication table.
 
 ## Known limitations
 

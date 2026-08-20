@@ -7,11 +7,11 @@ from pathlib import Path
 import pandas as pd
 
 from .config import load_config, resolve_config_path
-from .manifest import load_manifest, validate_manifest
+from .manifest import DEFAULT_SLICE_OFFSETS, load_manifest, validate_manifest
 from .metrics import bootstrap_confidence_intervals, classification_metrics
 from .splits import make_four_fold_assignments
 from .training import train_fold
-from .voting import aggregate_slice_predictions
+from .voting import DEFAULT_MSV_WEIGHTS, aggregate_slice_predictions
 
 
 def _config_parser(description: str) -> argparse.ArgumentParser:
@@ -65,7 +65,7 @@ def audit_manifest_main() -> None:
         manifest,
         [str(data.get("image_column", "fused_path"))],
         expected_slices=int(data.get("expected_slices", 5)),
-        expected_slice_indices=data.get("slice_indices", [6, 7, 8, 9, 10]),
+        expected_slice_offsets=data.get("slice_offsets", DEFAULT_SLICE_OFFSETS),
         data_root=resolve_config_path(config, data.get("root", ".")),
         check_files=args.check_files,
     )
@@ -85,7 +85,7 @@ def make_splits_main() -> None:
         manifest,
         [str(data.get("image_column", "fused_path"))],
         expected_slices=int(data.get("expected_slices", 5)),
-        expected_slice_indices=data.get("slice_indices", [6, 7, 8, 9, 10]),
+        expected_slice_offsets=data.get("slice_offsets", DEFAULT_SLICE_OFFSETS),
         check_files=False,
     )
     assignments = make_four_fold_assignments(
@@ -101,7 +101,7 @@ def make_splits_main() -> None:
 
 
 def train_fold_main() -> None:
-    parser = _config_parser("Train five slice-specific ViTs and MSV for one fold")
+    parser = _config_parser("Train one fold-shared ViT on all selected slices, then apply MSV")
     parser.add_argument("--fold", required=True, type=int)
     args = parser.parse_args()
     output = train_fold(load_config(args.config), args.fold)
@@ -137,6 +137,9 @@ def aggregate_msv_main() -> None:
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--expected-slices", type=int, default=5)
+    parser.add_argument(
+        "--slice-offsets", type=int, nargs="+", default=list(DEFAULT_SLICE_OFFSETS)
+    )
     parser.add_argument("--threshold", type=float, default=0.5, help="Patient-level threshold")
     parser.add_argument(
         "--method", choices=["soft", "hard", "weighted_soft"], default="weighted_soft"
@@ -145,8 +148,8 @@ def aggregate_msv_main() -> None:
         "--weights",
         type=float,
         nargs="+",
-        default=[0.05, 0.05, 0.8, 0.05, 0.05],
-        help="Fixed weights ordered by ascending slice_index",
+        default=list(DEFAULT_MSV_WEIGHTS),
+        help="Fixed weights ordered by ascending slice_offset (center-2 through center+2)",
     )
     parser.add_argument(
         "--threshold-inclusive",
@@ -165,6 +168,7 @@ def aggregate_msv_main() -> None:
         method=args.method,
         positive_label=args.positive_label,
         weights=args.weights if args.method == "weighted_soft" else None,
+        expected_slice_offsets=tuple(args.slice_offsets),
         threshold_inclusive=args.threshold_inclusive,
     )
     output = Path(args.output).expanduser().resolve()
@@ -179,13 +183,16 @@ def evaluate_oof_main() -> None:
     parser.add_argument("--input", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--expected-slices", type=int, default=5)
+    parser.add_argument(
+        "--slice-offsets", type=int, nargs="+", default=list(DEFAULT_SLICE_OFFSETS)
+    )
     parser.add_argument("--expected-subjects", type=int)
     parser.add_argument("--patient-threshold", type=float, default=0.5)
     parser.add_argument(
         "--method", choices=["soft", "hard", "weighted_soft"], default="weighted_soft"
     )
     parser.add_argument(
-        "--weights", type=float, nargs="+", default=[0.05, 0.05, 0.8, 0.05, 0.05]
+        "--weights", type=float, nargs="+", default=list(DEFAULT_MSV_WEIGHTS)
     )
     parser.add_argument("--threshold-inclusive", action="store_true")
     parser.add_argument("--positive-label", type=int, choices=[0, 1], default=1)
@@ -210,6 +217,7 @@ def evaluate_oof_main() -> None:
         method=args.method,
         positive_label=args.positive_label,
         weights=args.weights if args.method == "weighted_soft" else None,
+        expected_slice_offsets=tuple(args.slice_offsets),
         threshold_inclusive=args.threshold_inclusive,
     )
     fold_map = frame.groupby("subject_id")[fold_column].first().astype(int)

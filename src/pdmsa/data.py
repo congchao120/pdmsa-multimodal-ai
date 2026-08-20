@@ -12,11 +12,11 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
 def build_transforms(image_size: int, augmentation: dict[str, Any], training: bool):
-    """Build the ViT preprocessing used by the source classification scripts.
+    """Build preprocessing for the shared 384-pixel ViT.
 
-    The source run resized a pre-fused RGB PNG to 224 x 224 and then applied
-    ImageNet normalization. Augmentation remains available as an explicitly
-    enabled extension; it is disabled in the source-aligned configuration.
+    Every pre-fused RGB slice is resized to the configured square input and
+    ImageNet-normalized. Augmentation remains an explicitly enabled option and
+    is disabled in the article-aligned configuration.
     """
     from torchvision import transforms
 
@@ -108,6 +108,8 @@ class FusedRGBSliceDataset:
         label = torch.tensor(int(record["label"]), dtype=torch.long)
         metadata = {
             "subject_id": str(record["subject_id"]),
+            "center_slice_index": int(record["center_slice_index"]),
+            "slice_offset": int(record["slice_offset"]),
             "slice_index": int(record["slice_index"]),
             # Do not propagate private server roots into prediction tables.
             "input_file": Path(str(record[self.image_column])).name,

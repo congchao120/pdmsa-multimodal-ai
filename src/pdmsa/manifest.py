@@ -8,7 +8,14 @@ import numpy as np
 import pandas as pd
 
 
-REQUIRED_BASE_COLUMNS = ("subject_id", "label", "slice_index")
+DEFAULT_SLICE_OFFSETS = (-2, -1, 0, 1, 2)
+REQUIRED_BASE_COLUMNS = (
+    "subject_id",
+    "label",
+    "center_slice_index",
+    "slice_offset",
+    "slice_index",
+)
 
 
 @dataclass(frozen=True)
@@ -17,6 +24,7 @@ class ManifestAudit:
     subjects: int
     class_counts: dict[int, int]
     slices_per_subject: dict[int, int]
+    slice_offsets: tuple[int, ...]
     channels: tuple[str, ...]
 
 
@@ -31,11 +39,16 @@ def validate_manifest(
     frame: pd.DataFrame,
     channels: Iterable[str],
     expected_slices: int | None = 5,
-    expected_slice_indices: Iterable[int] | None = None,
+    expected_slice_offsets: Iterable[int] | None = DEFAULT_SLICE_OFFSETS,
     data_root: str | Path | None = None,
     check_files: bool = False,
 ) -> ManifestAudit:
-    """Validate identity, label, slice, and channel invariants before splitting."""
+    """Validate identity, label, centered-slice, and channel invariants.
+
+    Slice indices are zero-based array indices. Every subject records an independently
+    selected ``center_slice_index`` and five offsets around that center; file names are
+    opaque and are never used to infer an index.
+    """
     channel_tuple = tuple(channels)
     required = set(REQUIRED_BASE_COLUMNS).union(channel_tuple)
     missing = sorted(required.difference(frame.columns))
@@ -59,42 +72,71 @@ def validate_manifest(
         raise ValueError("This binary pipeline requires labels encoded as 0 and 1")
 
     numeric_slices = pd.to_numeric(frame["slice_index"], errors="raise")
-    if not np.isfinite(numeric_slices.to_numpy(dtype=float)).all():
-        raise ValueError("slice_index contains a non-finite value")
-    if not (numeric_slices.to_numpy(dtype=float) == np.floor(numeric_slices)).all():
-        raise ValueError("slice_index values must be integers; fractional values are not allowed")
+    numeric_centers = pd.to_numeric(frame["center_slice_index"], errors="raise")
+    numeric_offsets = pd.to_numeric(frame["slice_offset"], errors="raise")
+    for name, values in (
+        ("slice_index", numeric_slices),
+        ("center_slice_index", numeric_centers),
+        ("slice_offset", numeric_offsets),
+    ):
+        array = values.to_numpy(dtype=float)
+        if not np.isfinite(array).all():
+            raise ValueError(f"{name} contains a non-finite value")
+        if not (array == np.floor(array)).all():
+            raise ValueError(f"{name} values must be integers; fractional values are not allowed")
     normalized = frame.copy()
     normalized["label"] = labels
     normalized["slice_index"] = numeric_slices.astype(int)
+    normalized["center_slice_index"] = numeric_centers.astype(int)
+    normalized["slice_offset"] = numeric_offsets.astype(int)
+    if (normalized[["slice_index", "center_slice_index"]] < 0).any().any():
+        raise ValueError(
+            "slice_index and center_slice_index must be non-negative zero-based indices"
+        )
 
     label_counts_per_subject = normalized.groupby("subject_id")["label"].nunique()
     inconsistent = label_counts_per_subject[label_counts_per_subject != 1].index.tolist()
     if inconsistent:
         raise ValueError(f"Subjects with inconsistent labels: {inconsistent[:10]}")
 
-    duplicate_key = normalized.duplicated(["subject_id", "slice_index"], keep=False)
-    if duplicate_key.any():
-        examples = normalized.loc[duplicate_key, ["subject_id", "slice_index"]].head(10)
+    center_counts_per_subject = normalized.groupby("subject_id")["center_slice_index"].nunique()
+    inconsistent_centers = center_counts_per_subject[center_counts_per_subject != 1].index.tolist()
+    if inconsistent_centers:
         raise ValueError(
-            f"Duplicate subject/slice rows detected:\n{examples.to_string(index=False)}"
+            f"Subjects with inconsistent center_slice_index values: {inconsistent_centers[:10]}"
+        )
+
+    expected_absolute = normalized["center_slice_index"] + normalized["slice_offset"]
+    inconsistent_mapping = normalized["slice_index"] != expected_absolute
+    if inconsistent_mapping.any():
+        examples = normalized.loc[
+            inconsistent_mapping,
+            ["subject_id", "center_slice_index", "slice_offset", "slice_index"],
+        ].head(10)
+        raise ValueError(
+            "slice_index must equal center_slice_index + slice_offset; mismatches:\n"
+            + examples.to_string(index=False)
+        )
+
+    duplicate_key = normalized.duplicated(["subject_id", "slice_offset"], keep=False)
+    if duplicate_key.any():
+        examples = normalized.loc[duplicate_key, ["subject_id", "slice_offset"]].head(10)
+        raise ValueError(
+            f"Duplicate subject/slice-offset rows detected:\n{examples.to_string(index=False)}"
         )
 
     for channel in channel_tuple:
         if (frame[channel].astype(str).str.strip() == "").any():
             raise ValueError(f"Path column {channel} contains blank values")
-        path_subject_counts = (
-            frame.assign(_path=frame[channel].astype(str).str.strip())
-            .groupby("_path")["subject_id"]
-            .nunique()
-        )
-        reused = path_subject_counts[path_subject_counts > 1]
+        normalized_paths = frame[channel].astype(str).str.strip()
+        reused = normalized_paths[normalized_paths.duplicated(keep=False)]
         if not reused.empty:
             raise ValueError(
-                f"Channel {channel} reuses a file path across subjects; examples: "
-                f"{reused.head(10).index.tolist()}"
+                f"Channel {channel} reuses a file path across manifest rows; examples: "
+                f"{reused.head(10).tolist()}"
             )
 
-    slices = normalized.groupby("subject_id")["slice_index"].nunique()
+    slices = normalized.groupby("subject_id")["slice_offset"].nunique()
     if expected_slices is not None:
         bad = slices[slices != expected_slices]
         if not bad.empty:
@@ -103,27 +145,28 @@ def validate_manifest(
                 f"{bad.head(10).to_dict()}"
             )
 
-    if expected_slice_indices is not None:
-        expected = tuple(int(value) for value in expected_slice_indices)
+    expected: tuple[int, ...] = tuple()
+    if expected_slice_offsets is not None:
+        expected = tuple(int(value) for value in expected_slice_offsets)
         if len(expected) != len(set(expected)):
-            raise ValueError("expected_slice_indices contains duplicates")
+            raise ValueError("expected_slice_offsets contains duplicates")
         if expected_slices is not None and len(expected) != expected_slices:
             raise ValueError(
-                "expected_slice_indices length does not match expected_slices: "
+                "expected_slice_offsets length does not match expected_slices: "
                 f"{len(expected)} != {expected_slices}"
             )
         expected_set = set(expected)
-        bad_indices: dict[str, list[int]] = {}
+        bad_offsets: dict[str, list[int]] = {}
         for subject_id, group in normalized.groupby("subject_id", sort=False):
-            observed = set(group["slice_index"].astype(int))
+            observed = set(group["slice_offset"].astype(int))
             if observed != expected_set:
-                bad_indices[str(subject_id)] = sorted(observed)
-                if len(bad_indices) >= 10:
+                bad_offsets[str(subject_id)] = sorted(observed)
+                if len(bad_offsets) >= 10:
                     break
-        if bad_indices:
+        if bad_offsets:
             raise ValueError(
-                f"Expected slice indices {sorted(expected_set)} for every subject; "
-                f"mismatches: {bad_indices}"
+                f"Expected slice offsets {sorted(expected_set)} for every subject; "
+                f"mismatches: {bad_offsets}"
             )
 
     if check_files:
@@ -155,6 +198,7 @@ def validate_manifest(
         subjects=frame["subject_id"].nunique(),
         class_counts=class_counts,
         slices_per_subject=slice_distribution,
+        slice_offsets=expected,
         channels=channel_tuple,
     )
 

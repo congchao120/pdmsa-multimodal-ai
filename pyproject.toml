@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdmsa-multimodal-ai"
-version = "0.1.0"
+version = "0.2.0"
 description = "ViT and multi-slice voting for fused PET/MRI differentiation of PD and MSA-P"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"

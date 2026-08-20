@@ -126,7 +126,7 @@ def create_gradcam_artifacts(
         target_layer_index = int(gradcam_config.get("target_layer_index", 8))
 
     data_config = config.get("data", {})
-    image_size = int(data_config.get("image_size", 224))
+    image_size = int(data_config.get("image_size", 384))
     if image_size <= 0:
         raise ValueError("data.image_size must be positive")
 

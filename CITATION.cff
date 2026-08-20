@@ -4,7 +4,7 @@ message: >-
   once its bibliographic record is available.
 title: "PD/MSA-P Multimodal PET/MRI Classification Pipeline"
 type: software
-version: 0.1.0
+version: 0.2.0
 repository-code: "https://github.com/congchao120/pdmsa-multimodal-ai"
 authors:
   - family-names: "Cong"

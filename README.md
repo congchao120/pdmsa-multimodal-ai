@@ -6,9 +6,11 @@ from the study `sourcecode` directory into a reproducible command-line project; 
 byte-for-byte archive of every exploratory script.
 
 The classification input is the **already fused RGB PNG** generated during preprocessing.
-For each subject, five selected axial layers (indices 6, 7, 8, 9, and 10) are classified by
-five separately trained Vision Transformer (ViT) models. Their probabilities are then combined
-by multi-slice voting (MSV).
+For each subject, the axial slice with the largest segmented striatal ROI is selected dynamically,
+and its two real neighbors on each side form a five-slice window. One shared Vision Transformer
+(ViT) is trained per cross-validation fold on all five slices from every training patient. The same
+fold checkpoint produces all held-out slice probabilities, which are then combined by multi-slice
+voting (MSV).
 
 > **Result provenance.** Data augmentation, a weighted sampler, and class-weighted
 > cross-entropy are exposed as optional, newly consolidated controls. They must not be described
@@ -21,10 +23,10 @@ The release contains:
 
 - manifest-based pairing by pseudonymous subject ID and slice index;
 - patient-level four-fold split generation and leakage checks;
-- one ViT classifier per selected layer and fold;
+- one shared ViT classifier per fold, trained on every selected slice;
 - configurable weighted MSV and patient-level metrics;
 - optional training-only augmentation and two optional class-imbalance strategies;
-- Grad-CAM export for an individual slice model;
+- Grad-CAM export for an individual slice processed by the fold-shared model;
 - synthetic manifest records and unit tests (no clinical images).
 
 MSV is a **decision-level aggregation method**, not an attention mechanism. Self-attention is
@@ -49,13 +51,26 @@ With `positive_label = 1`, sensitivity is PD recall and specificity is the true-
 for MSA-P. Changing the positive label changes the clinical interpretation of these metrics and
 must be reflected consistently in configurations, tables, and figures.
 
-The classification manifest has one row per subject and selected layer:
+The classification manifest has one row per subject and selected slice:
 
 ```csv
-subject_id,label,slice_index,fused_path
-SUBJ0001,1,6,relative/path/SUBJ0001_layer6.png
-SUBJ0001,1,7,relative/path/SUBJ0001_layer7.png
+subject_id,label,center_slice_index,slice_offset,slice_index,fused_path
+SUBJ0001,1,18,-2,16,relative/path/SUBJ0001_slice016.png
+SUBJ0001,1,18,-1,17,relative/path/SUBJ0001_slice017.png
+SUBJ0001,1,18,0,18,relative/path/SUBJ0001_slice018.png
 ```
+
+All slice indices are zero-based indices on the preprocessed canonical axial grid. Every subject
+must have offsets `-2, -1, 0, 1, 2`, and `slice_index` must equal
+`center_slice_index + slice_offset`. The file name is treated as an opaque path and is never used
+to infer an index.
+
+`pdmsa.roi.centered_slice_metadata` identifies the center by maximum nonzero striatal-mask area
+along axis 2 and returns manifest-ready metadata for the exact center-minus-two through
+center-plus-two window. The underlying `select_five_slices` helper performs the same selection.
+The mask must already be reoriented to the study's canonical axial orientation. A maximum too
+close to the volume edge is rejected rather than shifted or duplicated, and tied maxima use the
+lowest zero-based index.
 
 `fused_path` points to a three-channel RGB PNG prepared before classification. The RGB channel
 order represents the chosen three-modality combination and must match the preprocessing record
@@ -119,11 +134,12 @@ For the separate segmentation environment and the verified installation procedur
 The runnable configuration is [configs/classification.toml](configs/classification.toml).
 Paths are resolved relative to that file unless documented otherwise.
 
-The current configuration mirrors the manuscript-reported classification settings: vit-base-
-patch16-384, 384×384-pixel input, 150 training epochs, and a batch size of 32. Other retained 
-exploratory scripts used 224×224-pixel input, 100 epochs, and a batch size of 64; these variants 
-are not claimed as the source of the reported results unless their checkpoint provenance is 
-independently confirmed.
+The manuscript-aligned public configuration uses `google/vit-base-patch16-384`, 384-pixel inputs,
+150 epochs, and a batch size of 32. Within a fold, training and validation datasets contain all
+five relative slice positions for their assigned patients; the model is initialized and
+checkpointed only once. The pretrained 1000-class ImageNet head is replaced by a newly initialized
+two-class PD/MSA-P head, while the compatible pretrained ViT backbone weights are loaded. A
+reported numerical result should archive this shared checkpoint and its exact run provenance.
 
 1. Audit the manifest and, when images are locally available, verify every path:
 
@@ -137,7 +153,7 @@ independently confirmed.
    pdmsa-make-splits --config configs/classification.toml
    ```
 
-3. Train the five layer-specific models for each fold:
+3. Train one shared ViT for each fold:
 
    ```bash
    pdmsa-train-fold --config configs/classification.toml --fold 0
@@ -146,44 +162,47 @@ independently confirmed.
    pdmsa-train-fold --config configs/classification.toml --fold 3
    ```
 
-Each run should retain the configuration, assignment-file hash, selected checkpoint, training
-log, and per-slice probabilities. Pool the held-out predictions from all four folds before
-computing the final subject-level result.
+Each fold writes one `best_model_weights.pth`, one training history, the probabilities for every
+held-out slice, patient-level MSV results, metrics, and provenance metadata. Pool the held-out
+predictions from all four folds before computing the final subject-level result. Do not mix this
+layout with legacy `slice_*` checkpoint directories.
 
 4. Aggregate five probabilities per subject with MSV, or evaluate pooled out-of-fold results:
 
    ```bash
    pdmsa-aggregate-msv --input outputs/oof_slice_predictions.csv \
      --output outputs/oof_subject_predictions.csv \
-     --method weighted_soft --weights 0.1 0.2 0.4 0.2 0.1 \
+     --method weighted_soft --weights 0.10 0.20 0.40 0.20 0.10 \
      --positive-label 1
 
    pdmsa-evaluate-oof --input outputs/oof_slice_predictions.csv \
      --output-dir outputs/oof_evaluation --expected-subjects 155 \
-     --method weighted_soft --weights 0.1 0.2 0.4 0.2 0.1 \
+     --method weighted_soft --weights 0.10 0.20 0.40 0.20 0.10 \
      --positive-label 1
    ```
 
-The displayed weights follow layer order 6 through 10 and remain configurable. If weights are
+The weights follow relative offsets `-2, -1, 0, 1, 2`; they therefore remain aligned even when
+patients have different absolute center indices. If weights are
 tuned, tuning must use training/validation data only; selecting weights on the final held-out
 predictions would bias the reported estimate.
 
 ## Grad-CAM
 
-Install the explainability requirements, then run Grad-CAM against one layer-specific
-checkpoint and its corresponding fused PNG:
+Install the explainability requirements, then run Grad-CAM against the fold-shared checkpoint and
+any corresponding fused PNG from that fold:
 
 ```bash
 pdmsa-gradcam --config configs/classification.toml \
-  --checkpoint outputs/fdg_cft_t2wi/fold_0/slice_8/best_model_weights.pth \
-  --input data/private/SUBJ0001_layer8.png \
-  --output-dir outputs/gradcam/SUBJ0001_layer8 \
+  --checkpoint outputs/fdg_cft_t2wi/fold_0/best_model_weights.pth \
+  --input data/private/SUBJ0001_slice018.png \
+  --output-dir outputs/gradcam/SUBJ0001_slice018 \
   --target-class 0 --target-layer 8
 ```
 
 If target arguments are omitted, the command uses the documented configuration defaults. Store
 the raw activation map, overlay, class probabilities, target class/layer, checkpoint hash, and
-input identifier together. A Grad-CAM image explains one classifier decision; it is not a
+input identifier together. The same fold checkpoint is used for every selected slice. A Grad-CAM
+image explains one classifier decision; it is not a
 probability assigned by MSV to that slice.
 
 ## nnU-Net four-fold segmentation

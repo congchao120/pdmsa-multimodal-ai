@@ -1,4 +1,4 @@
-# Manuscript-aligned reference ViT + multi-slice voting configuration.
+# Manuscript-aligned shared ViT + multi-slice voting configuration.
 # The classifier reads already fused three-channel RGB PNG files. The meaning of
 # the RGB channels is determined by the modality-combination preprocessing run.
 
@@ -12,8 +12,12 @@ positive_label = 1
 manifest = "../data/example_manifest.csv"
 root = ".."
 image_column = "fused_path"
-slice_indices = [6, 7, 8, 9, 10]
+slice_offsets = [-2, -1, 0, 1, 2]
 expected_slices = 5
+# Zero-based indices on a canonical axial grid. Each subject has its own center.
+slice_axis = 2
+slice_index_base = 0
+center_selection = "largest_striatal_roi_area"
 image_size = 384
 
 [splits]
@@ -27,6 +31,7 @@ name_or_path = "google/vit-base-patch16-384"
 # revision = "<commit>"
 num_labels = 2
 local_files_only = false
+# The ImageNet checkpoint has a 1000-class head; replace only that head with 2 outputs.
 ignore_mismatched_sizes = true
 
 [training]
@@ -58,8 +63,8 @@ strategy = "none"
 
 [voting]
 method = "weighted_soft"
-# Ordered by ascending slice_index: 6, 7, 8, 9, 10.
-weights = [0.1, 0.2, 0.40, 0.2, 0.1]
+# Ordered by slice_offset: center-2, center-1, center, center+1, center+2.
+weights = [0.10, 0.20, 0.40, 0.20, 0.10]
 patient_threshold = 0.50
 # The retained voting script used score > 0.5, not score >= 0.5.
 threshold_inclusive = false

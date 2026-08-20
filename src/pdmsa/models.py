@@ -5,7 +5,7 @@ from typing import Any
 
 
 def create_vit(model_config: dict[str, Any]):
-    """Create the Hugging Face ViT used by the retained source scripts."""
+    """Create the fold-shared Hugging Face ViT classifier."""
     from transformers import ViTForImageClassification
 
     name_or_path = str(model_config["name_or_path"])
