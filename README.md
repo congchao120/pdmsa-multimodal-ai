@@ -12,10 +12,6 @@ and its two real neighbors on each side form a five-slice window. One shared Vis
 fold checkpoint produces all held-out slice probabilities, which are then combined by multi-slice
 voting (MSV).
 
-> **Result provenance.** Data augmentation, a weighted sampler, and class-weighted
-> cross-entropy are exposed as optional, newly consolidated controls. They must not be described
-> as having produced a value reported in the article unless that experiment is rerun and its
-> configuration, fold assignments, checkpoint hashes, and predictions are archived.
 
 ## Pipeline scope
 
@@ -162,11 +158,6 @@ reported numerical result should archive this shared checkpoint and its exact ru
    pdmsa-train-fold --config configs/classification.toml --fold 3
    ```
 
-Each fold writes one `best_model_weights.pth`, one training history, the probabilities for every
-held-out slice, patient-level MSV results, metrics, and provenance metadata. Pool the held-out
-predictions from all four folds before computing the final subject-level result. Do not mix this
-layout with legacy `slice_*` checkpoint directories.
-
 4. Aggregate five probabilities per subject with MSV, or evaluate pooled out-of-fold results:
 
    ```bash
@@ -210,7 +201,7 @@ probability assigned by MSV to that slice.
 The runnable methods record is
 [configs/segmentation_fourfold.toml](configs/segmentation_fourfold.toml). It fixes folds 0--3,
 the nnU-Net-compatible split seed, `3d_fullres` plans, and the built-in
-`nnUNetTrainer_100epochs` variant. Generate the private `splits_final.json` locally, preview all
+`nnUNetTrainer_150epochs` variant. Generate the private `splits_final.json` locally, preview all
 commands, and then train:
 
 ```bash
@@ -226,10 +217,6 @@ python scripts/segmentation/nnunet_pipeline.py train-fourfold \
   --dry-run
 ```
 
-Real training is refused unless `splits_final.json` is a valid four-fold partition. The retained
-server directory contained older folds 0--4; those checkpoints are not renamed or claimed as
-outputs of this new four-fold recipe. The four-fold run is marked as not yet completed until it
-is actually rerun.
 
 ## Class imbalance options
 
