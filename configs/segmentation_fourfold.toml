@@ -21,7 +21,7 @@ anatomical_label_mapping_confirmed = false
 n_splits = 4
 seed = 12345
 shuffle = true
-stratified = false
+stratified = true
 folds = [0, 1, 2, 3]
 expected_train_cases_per_fold = 117
 expected_validation_cases_per_fold = 39
@@ -30,7 +30,7 @@ case_list_required_at_runtime = true
 
 [model]
 framework = "nnU-Net v2"
-trainer = "nnUNetTrainer_100epochs"
+trainer = "nnUNetTrainer_150epochs"
 base_trainer = "nnUNetTrainer"
 plans = "nnUNetPlans"
 configuration = "3d_fullres"
@@ -57,14 +57,6 @@ save_probabilities = true
 step_size = 0.5
 use_gaussian = true
 use_mirroring = true
-
-[software_evidence]
-# Evidence read from retained metadata/logs; this is not a portable lock file.
-retained_source_version_label = "2.1.1"
-retained_source_exact_commit = "unverified"
-pytorch = "2.0.1+cu117"
-cudnn = "8.5.0"
-gpu = "NVIDIA GeForce RTX 3080"
 
 [publication]
 training_images_in_repository = false
