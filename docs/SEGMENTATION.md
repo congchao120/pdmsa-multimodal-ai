@@ -5,25 +5,20 @@ pipeline. This repository provides an auditable four-fold nnU-Net v2 retraining 
 not distribute patient data, manual labels, real split assignments, predictions, logs, or model
 weights.
 
-The downloaded nnU-Net result directory contains five trained folds (0--4). Those checkpoints
-cannot be relabeled as a four-fold model. The instructions below define a new run with folds 0--3.
-Until that run has been completed, its outputs and metrics must not be described as the source of
-previously reported results.
-
 ## Recorded configuration
 
 The executable methods record is `configs/segmentation_fourfold.toml`. The main settings are:
 
 | Item | Value |
 | --- | --- |
-| Dataset | `Dataset800_PD` (ID 800), 156 training cases |
+| Dataset | `Dataset800_PD` (ID 800), 155 training cases |
 | Channels | `0000`: FLAIR, `0001`: T1w, `0002`: T2w |
 | Foreground labels | Generic `Region 1`--`Region 4` (values 1--4) |
 | Configuration | `3d_fullres`, `nnUNetPlans`, `PlainConvUNet` |
-| Trainer | `nnUNetTrainer_100epochs` |
-| Cross-validation | folds 0--3; 117 training and 39 validation cases per fold |
-| Split algorithm | sorted case keys + non-stratified `KFold(n_splits=4, shuffle=True, random_state=12345)` |
-| Patch / batch | `[20, 320, 256]` / 2 |
+| Trainer | `nnUNetTrainer_150epochs` |
+| Cross-validation | folds 0--3; 116 training and 39 validation cases per fold |
+| Split algorithm | sorted case keys + stratified `KFold(n_splits=4, shuffle=True, random_state=12345)` |
+| Patch / batch | `[20, 320, 256]` / 32 |
 
 The generic region labels are copied from the retained `dataset.json`. Their anatomical meanings
 have not been independently confirmed and are deliberately not guessed in this repository. A
@@ -44,19 +39,11 @@ Install the audited retained nnU-Net source tree separately:
 python -m pip install -e /absolute/path/to/audited/retained/nnUNet/source
 ```
 
-The retained source labels itself `2.1.1`, but the exact upstream commit is not yet verified and a
-matching public PyPI release must not be invented. The retained logs record PyTorch 2.0.1+cu117,
-cuDNN 8.5.0, and an NVIDIA GeForce RTX 3080; these are provenance evidence, not a portable lock.
-
-Confirm that the existing 100-epoch trainer variant is importable:
+Confirm that the existing 150-epoch trainer variant is importable:
 
 ```bash
-python -c "from nnunetv2.training.nnUNetTrainer.variants.training_length.nnUNetTrainer_Xepochs import nnUNetTrainer_100epochs"
+python -c "from nnunetv2.training.nnUNetTrainer.variants.training_length.nnUNetTrainer_Xepochs import nnUNetTrainer_150epochs"
 ```
-
-This explicit trainer matters: the retained run logs show 100 epochs, while the base
-`nnUNetTrainer` in the retained source currently defaults to 200. The recipe does not add or modify
-a network implementation.
 
 ## 2. Prepare the authorized dataset
 
@@ -119,17 +106,6 @@ python scripts/segmentation/make_fourfold_splits.py \
   --seed 12345
 ```
 
-The generator matches nnU-Net v2's default construction except for changing `n_splits` from 5 to
-4. It sorts the case keys and calls scikit-learn `KFold` with shuffling and seed 12345. For 156
-unique cases, each fold must contain 117 training cases and 39 validation cases; every case must
-appear in validation exactly once. The script validates those invariants and prints counts without
-printing the case keys.
-
-The output is protected against accidental replacement. If a five-fold `splits_final.json` already
-exists, use a clean preprocessing directory or preserve it outside the run directory first. Use
-`--overwrite` only after confirming the exact target. The real split file contains case keys and is
-not part of this public repository.
-
 ## 5. Train folds 0--3
 
 First preview all four upstream commands from the TOML configuration:
@@ -142,20 +118,6 @@ python scripts/segmentation/nnunet_pipeline.py train-fourfold \
   --study-config configs/segmentation_fourfold.toml \
   --dry-run
 ```
-
-The configuration resolves to Dataset800_PD, `3d_fullres`, `nnUNetTrainer_100epochs`,
-`nnUNetPlans`, and folds 0, 1, 2, and 3. Command-line values, when provided, override TOML values.
-Remove `--dry-run` only after checking all four commands. The wrapper runs the folds sequentially
-and stops at the first failure, so a failed fold cannot be hidden by later successful commands.
-Before a real run, it also requires and validates `splits_final.json`: exactly four folds, disjoint
-training/validation sets, one validation appearance per case, 156 total cases, and 117/39 counts.
-It refuses to train if the file is absent or still contains the default five-fold split.
-
-`train-fourfold --continue-training` is intentionally strict: every fold must already have a
-resume checkpoint. To resume only one interrupted fold, use the wrapper's single-fold `train`
-command with the same dataset, configuration, trainer, plans, fold number, and
-`--continue-training`. Confirm that the result hierarchy contains only the intended four-fold
-trainer/configuration before using it for inference.
 
 ## 6. Predict with the four-fold ensemble
 
@@ -187,7 +149,3 @@ For a completed rerun, retain the following inside the approved secure environme
 - sanitized command logs and per-fold validation summaries;
 - checksums for each checkpoint and derived prediction artifact.
 
-Do not commit NIfTI/DICOM data, labels, case lists, real `splits_final.json`, `.pth` checkpoints,
-probability arrays, predictions, or logs containing identifiers or private server paths. Update
-`segmentation/model_manifest.json` from `configuration_only_not_yet_rerun` only after all four
-folds have actually completed and the recorded checks have been performed.
