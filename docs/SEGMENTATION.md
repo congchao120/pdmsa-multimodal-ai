@@ -16,7 +16,7 @@ The executable methods record is `configs/segmentation_fourfold.toml`. The main 
 | Foreground labels | Generic `Region 1`--`Region 4` (values 1--4) |
 | Configuration | `3d_fullres`, `nnUNetPlans`, `PlainConvUNet` |
 | Trainer | `nnUNetTrainer_150epochs` |
-| Cross-validation | folds 0--3; 116 training and 39 validation cases per fold |
+| Cross-validation | folds 0--3 |
 | Split algorithm | sorted case keys + stratified `KFold(n_splits=4, shuffle=True, random_state=12345)` |
 | Patch / batch | `[20, 320, 256]` / 32 |
 
