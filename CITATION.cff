@@ -3,6 +3,7 @@ message: "If you use this software, please cite the repository."
 title: "PD/MSA-P Multimodal PET/MRI Classification Pipeline"
 type: software
 version: 0.2.0
+license: MIT
 repository-code: "https://github.com/congchao120/pdmsa-multimodal-ai"
 authors:
   - family-names: "Cong"
