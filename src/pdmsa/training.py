@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import json
-import platform
 import sys
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from .config import public_config, resolve_config_path
@@ -18,7 +16,6 @@ from .models import create_vit
 from .reproducibility import file_sha256, seed_everything, seed_worker
 from .splits import audit_manifest_assignment_alignment
 from .voting import DEFAULT_MSV_WEIGHTS, aggregate_slice_predictions
-
 
 SHARED_CHECKPOINT_NAME = "best_model_weights.pth"
 
@@ -97,7 +94,6 @@ def _predict_slices(model, loader, device, fold: int, positive_label: int) -> pd
                         "center_slice_index": int(metadata["center_slice_index"][index]),
                         "slice_offset": int(metadata["slice_offset"][index]),
                         "slice_index": int(metadata["slice_index"][index]),
-                        "input_file": str(metadata["input_file"][index]),
                         "y_true": int(labels[index]),
                         "p_class_0": float(probabilities[index, 0]),
                         "p_class_1": float(probabilities[index, 1]),
@@ -117,13 +113,9 @@ def _make_optimizer(model, training_config: dict[str, Any]):
     learning_rate = float(training_config.get("learning_rate", 1e-3))
     weight_decay = float(training_config.get("weight_decay", 0.0))
     if name == "adam":
-        return torch.optim.Adam(
-            model.parameters(), lr=learning_rate, weight_decay=weight_decay
-        )
+        return torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     if name == "adamw":
-        return torch.optim.AdamW(
-            model.parameters(), lr=learning_rate, weight_decay=weight_decay
-        )
+        return torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     raise ValueError("training.optimizer must be 'adam' or 'adamw'")
 
 
@@ -137,16 +129,15 @@ def _audit_shared_frames(
         if frame.empty:
             raise ValueError(f"The {role} frame is empty")
         expected_set = set(expected_offsets)
-        bad: dict[str, list[int]] = {}
-        for subject_id, group in frame.groupby("subject_id", sort=False):
+        bad_count = 0
+        for _, group in frame.groupby("subject_id", sort=False):
             observed = set(group["slice_offset"].astype(int))
             if observed != expected_set or len(group) != len(expected_offsets):
-                bad[str(subject_id)] = sorted(observed)
-                if len(bad) >= 10:
-                    break
-        if bad:
+                bad_count += 1
+        if bad_count:
             raise ValueError(
-                f"The {role} frame does not contain one complete centered window per subject: {bad}"
+                f"The {role} frame does not contain one complete centered window "
+                f"for {bad_count} subjects"
             )
         summary[role] = {
             "subjects": int(frame["subject_id"].nunique()),
@@ -228,9 +219,7 @@ def _train_shared_model(
     model = create_vit(model_config).to(device)
     ce_weight = None
     if imbalance_strategy in {"class_weighted_loss", "both"}:
-        subject_labels = (
-            frames["train"][["subject_id", "label"]].drop_duplicates()["label"]
-        )
+        subject_labels = frames["train"][["subject_id", "label"]].drop_duplicates()["label"]
         ce_weight = torch.as_tensor(
             class_weight_vector(subject_labels), dtype=torch.float32, device=device
         )
@@ -334,17 +323,18 @@ def train_fold(config: dict[str, Any], fold: int) -> Path:
     if fold not in set(assignments["fold"].astype(int)):
         raise ValueError(f"Requested fold {fold} is not present in assignments")
     frames = {
-        role: _subset_rows(manifest, assignments, fold, role)
-        for role in ("train", "validation")
+        role: _subset_rows(manifest, assignments, fold, role) for role in ("train", "validation")
     }
     if any(frame.empty for frame in frames.values()):
         raise ValueError(f"Fold {fold} has an empty role")
 
-    legacy_directories = sorted(path.name for path in fold_output.glob("slice_*") if path.is_dir())
-    if legacy_directories:
+    conflicting_directories = sorted(
+        path.name for path in fold_output.glob("slice_*") if path.is_dir()
+    )
+    if conflicting_directories:
         raise RuntimeError(
-            "The fold output contains legacy slice-specific model directories "
-            f"{legacy_directories}. Use a new output directory for the shared-ViT run."
+            "The fold output contains incompatible slice-specific model directories "
+            f"{conflicting_directories}. Use a new output directory for the shared-ViT run."
         )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -395,8 +385,8 @@ def train_fold(config: dict[str, Any], fold: int) -> Path:
         json.dump({"point_estimates": metrics, "bootstrap_ci": intervals}, handle, indent=2)
 
     try:
-        import transformers
         import torchvision
+        import transformers
 
         transformers_version = transformers.__version__
         torchvision_version = torchvision.__version__
@@ -411,15 +401,12 @@ def train_fold(config: dict[str, Any], fold: int) -> Path:
         "positive_label": positive_label,
         "model_scope": "one_shared_vit_per_fold",
         "shared_model": shared_model_metadata,
-        "python": sys.version,
-        "platform": platform.platform(),
+        "python": sys.version.split()[0],
         "torch": torch.__version__,
         "torchvision": torchvision_version,
         "transformers": transformers_version,
         "cuda_runtime": torch.version.cuda,
         "cudnn": torch.backends.cudnn.version(),
-        "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
-        "device": str(device),
         "manifest_sha256": file_sha256(manifest_path),
         "assignments_sha256": file_sha256(assignments_path),
         "train_subjects": int(frames["train"]["subject_id"].nunique()),

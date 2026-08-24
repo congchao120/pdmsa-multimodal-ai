@@ -1,22 +1,5 @@
-# Split generation uses NumPy and scikit-learn to match nnU-Net v2's KFold
-# implementation. Python 3.10 also needs the TOML compatibility reader.
-numpy>=1.24,<2
+# Install the PyTorch build appropriate for the local CPU or CUDA environment first.
+nnunetv2>=2.1,<3
+numpy>=1.24,<3
 scikit-learn>=1.3,<2
 tomli>=2,<3; python_version < "3.11"
-
-# The training runtime must also provide nnU-Net v2 and its transitive dependencies.
-# IMPORTANT: the retained source tree reports nnunetv2 2.1.1, but 2.1.1 is not a
-# verified public PyPI release and its exact upstream Git commit is unknown. Writing
-# `nnunetv2==2.1.1` here would create a false, non-installable lock. Install the
-# audited retained source tree instead:
-#
-#   python -m pip install -e /absolute/path/to/audited/retained/nnUNet/source
-#
-# Then confirm that the explicit 100-epoch trainer is importable:
-#
-#   python -c "from nnunetv2.training.nnUNetTrainer.variants.training_length.nnUNetTrainer_Xepochs import nnUNetTrainer_100epochs"
-#
-# Evidence from retained logs (not portable install directives):
-#   PyTorch 2.0.1+cu117; cuDNN 8.5.0; NVIDIA GeForce RTX 3080.
-# Install the CUDA-specific PyTorch build appropriate for the target server. Add a
-# complete environment lock only after the exact nnU-Net revision is recovered and tested.

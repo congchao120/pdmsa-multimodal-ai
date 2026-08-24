@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
-"""Thin, auditable wrapper around the official nnU-Net v2 command-line tools.
+"""Thin wrapper around the official nnU-Net v2 command-line tools.
 
 This script does not implement or modify nnU-Net.  It makes the three nnU-Net
-storage locations explicit and records/prints the exact upstream command that
-is executed.  Run with ``--dry-run`` before starting a long server job.
+storage locations explicit and prints the exact command that is executed. Run
+with ``--dry-run`` before starting a long training job.
 """
 
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 import hashlib
 import importlib.metadata
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
-from typing import Iterable, Mapping, Sequence
-
+from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
+from pathlib import Path
 
 NNUNET_COMMANDS = {
     "plan": "nnUNetv2_plan_and_preprocess",
@@ -45,8 +44,7 @@ def _dataset(value: str) -> str:
     candidate = value.strip()
     if not DATASET_PATTERN.fullmatch(candidate):
         raise argparse.ArgumentTypeError(
-            "dataset must be a numeric ID or an nnU-Net name such as "
-            "Dataset800_PD"
+            "dataset must be a numeric ID or an nnU-Net name such as Dataset800_PD"
         )
     return candidate
 
@@ -188,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument(
         "--save-probabilities",
         action="store_true",
-        help="Pass --npz so validation probabilities are retained.",
+        help="Pass --npz to save validation probabilities.",
     )
     train.add_argument(
         "--continue-training",
@@ -231,7 +229,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--save-probabilities",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="Pass --npz so validation probabilities are retained for every fold.",
+        help="Pass --npz to save validation probabilities for every fold.",
     )
     train_fourfold.add_argument(
         "--continue-training",
@@ -239,7 +237,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="continue_training",
         action="store_true",
         help=(
-            "Pass --c to every fold. Existing checkpoints are resumed; the retained "
+            "Pass --c to every fold. Existing checkpoints are resumed; the current "
             "nnU-Net starts a fold from scratch when that fold has no checkpoint."
         ),
     )
@@ -320,9 +318,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--save-probabilities",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help=(
-            "Control --save_probabilities (default: value from --study-config, then false)."
-        ),
+        help=("Control --save_probabilities (default: value from --study-config, then false)."),
     )
     predict_fourfold.add_argument(
         "--step-size",
@@ -396,7 +392,7 @@ def _check_command_available(command: str, dry_run: bool) -> None:
     if shutil.which(command) is None and not dry_run:
         raise RuntimeError(
             f"Required executable '{command}' was not found on PATH. "
-            "Install the exact, server-verified nnunetv2 revision before running."
+            "Install a compatible nnunetv2 package before running."
         )
 
 
@@ -446,9 +442,7 @@ def _train_command(args: argparse.Namespace, fold: str | None = None) -> list[st
     return command
 
 
-def _predict_command(
-    args: argparse.Namespace, folds: Sequence[str] | None = None
-) -> list[str]:
+def _predict_command(args: argparse.Namespace, folds: Sequence[str] | None = None) -> list[str]:
     command = [
         NNUNET_COMMANDS["predict"],
         "-i",
@@ -578,9 +572,7 @@ def _configure_fourfold_action(args: argparse.Namespace) -> None:
     args.trainer = args.trainer or _config_string(model, "trainer")
     args.plans = args.plans or _config_string(model, "plans")
     args.expected_training_cases = _config_int(study, "num_training_cases")
-    args.expected_train_cases_per_fold = _config_int(
-        split, "expected_train_cases_per_fold"
-    )
+    args.expected_train_cases_per_fold = _config_int(split, "expected_train_cases_per_fold")
     args.expected_validation_cases_per_fold = _config_int(
         split, "expected_validation_cases_per_fold"
     )
@@ -605,13 +597,11 @@ def _configure_fourfold_action(args: argparse.Namespace) -> None:
             raise ValueError("inference step size must be greater than 0 and at most 1")
         if args.use_mirroring is None:
             configured_mirroring = _config_bool(inference, "use_mirroring")
-            args.use_mirroring = (
-                configured_mirroring if configured_mirroring is not None else True
-            )
+            args.use_mirroring = configured_mirroring if configured_mirroring is not None else True
         configured_gaussian = _config_bool(inference, "use_gaussian")
         if configured_gaussian is False:
             raise ValueError(
-                "The retained nnUNetv2_predict CLI always enables Gaussian weighting; "
+                "nnUNetv2_predict enables Gaussian weighting by default; "
                 "[inference].use_gaussian=false is unsupported"
             )
 
@@ -620,9 +610,7 @@ def _configure_fourfold_action(args: argparse.Namespace) -> None:
             "dataset is required: pass --dataset or set [study].dataset_name in --study-config"
         )
     if not DATASET_PATTERN.fullmatch(args.dataset):
-        raise ValueError(
-            "dataset must be a numeric ID or an nnU-Net name such as Dataset800_PD"
-        )
+        raise ValueError("dataset must be a numeric ID or an nnU-Net name such as Dataset800_PD")
     if args.configuration is None:
         raise ValueError(
             "configuration is required: pass --configuration or set "
@@ -637,9 +625,7 @@ def _configure_fourfold_action(args: argparse.Namespace) -> None:
         raise ValueError("[split].folds must be a TOML array containing 0, 1, 2, and 3")
     folds = tuple(str(fold) for fold in configured_folds)
     if folds != FOUR_FOLDS:
-        raise ValueError(
-            "The four-fold workflow requires [split].folds = [0, 1, 2, 3] exactly"
-        )
+        raise ValueError("The four-fold workflow requires [split].folds = [0, 1, 2, 3] exactly")
     args.fourfold_folds = folds
 
     if args.study_config:
@@ -662,11 +648,7 @@ def _preprocessed_dataset_directory(
         return preprocessed_dir / dataset
 
     dataset_prefix = f"Dataset{int(dataset):03d}_"
-    matches = sorted(
-        path
-        for path in preprocessed_dir.glob(f"{dataset_prefix}*")
-        if path.is_dir()
-    )
+    matches = sorted(path for path in preprocessed_dir.glob(f"{dataset_prefix}*") if path.is_dir())
     if len(matches) == 1:
         return matches[0]
     if not matches and dry_run:
@@ -687,9 +669,7 @@ def _preprocessed_dataset_directory(
 
 def _validate_fourfold_split_document(document: object, path: Path) -> list[tuple[int, int]]:
     if not isinstance(document, list) or len(document) != len(FOUR_FOLDS):
-        raise ValueError(
-            f"{path} must contain exactly four split objects for folds 0, 1, 2, and 3"
-        )
+        raise ValueError(f"{path} must contain exactly four split objects for folds 0, 1, 2, and 3")
 
     fold_sets: list[tuple[set[str], set[str]]] = []
     universe: set[str] | None = None
@@ -702,9 +682,7 @@ def _validate_fourfold_split_document(document: object, path: Path) -> list[tupl
         train = split.get("train")
         validation = split.get("val")
         if not isinstance(train, list) or not isinstance(validation, list):
-            raise ValueError(
-                f"Fold {fold_index} in {path} must contain train and val arrays"
-            )
+            raise ValueError(f"Fold {fold_index} in {path} must contain train and val arrays")
         if not train or not validation:
             raise ValueError(f"Fold {fold_index} in {path} has an empty train or val array")
         if not all(isinstance(case_id, str) and case_id for case_id in train + validation):
@@ -728,9 +706,7 @@ def _validate_fourfold_split_document(document: object, path: Path) -> list[tupl
         counts.append((len(train_set), len(validation_set)))
 
     assert universe is not None  # four non-empty folds were required above
-    invalid_appearances = [
-        case_id for case_id in universe if validation_appearances[case_id] != 1
-    ]
+    invalid_appearances = [case_id for case_id in universe if validation_appearances[case_id] != 1]
     if invalid_appearances:
         raise ValueError(
             f"{path} is not a valid four-fold partition: each case must appear in val once"
@@ -744,9 +720,7 @@ def _validate_fourfold_split_document(document: object, path: Path) -> list[tupl
 
 
 def _verify_fourfold_splits(args: argparse.Namespace) -> None:
-    dataset_dir = _preprocessed_dataset_directory(
-        args.preprocessed_dir, args.dataset, args.dry_run
-    )
+    dataset_dir = _preprocessed_dataset_directory(args.preprocessed_dir, args.dataset, args.dry_run)
     if dataset_dir is None:
         print(
             "Dry run: splits_final.json was not validated because the dataset directory "
@@ -803,19 +777,14 @@ def _verify_fourfold_splits(args: argparse.Namespace) -> None:
     )
 
 
-def _run_fourfold_training(
-    args: argparse.Namespace, environment: Mapping[str, str]
-) -> int:
+def _run_fourfold_training(args: argparse.Namespace, environment: Mapping[str, str]) -> int:
     """Run the four independent training commands in a deterministic order."""
 
     _validate_training_options(args)
     _verify_fourfold_splits(args)
     _check_command_available(NNUNET_COMMANDS["train"], args.dry_run)
     for fold in args.fourfold_folds:
-        print(
-            f"Four-fold training: fold {fold} "
-            f"({int(fold) + 1}/{len(args.fourfold_folds)})"
-        )
+        print(f"Four-fold training: fold {fold} ({int(fold) + 1}/{len(args.fourfold_folds)})")
         return_code = _run(
             _train_command(args, fold=fold),
             environment,

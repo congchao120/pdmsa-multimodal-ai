@@ -1,8 +1,8 @@
 import argparse
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from scripts.segmentation import nnunet_pipeline as pipeline
@@ -96,13 +96,12 @@ class NnUNetPipelineTests(unittest.TestCase):
         document = _fourfold_document()
         document[1]["val"] = list(document[0]["val"])
         document[1]["train"] = [
-            case for case in document[0]["train"] + document[0]["val"]
+            case
+            for case in document[0]["train"] + document[0]["val"]
             if case not in document[1]["val"]
         ]
         with self.assertRaisesRegex(ValueError, "each case must appear in val once"):
-            pipeline._validate_fourfold_split_document(
-                document, Path("splits_final.json")
-            )
+            pipeline._validate_fourfold_split_document(document, Path("splits_final.json"))
 
     def test_train_fourfold_uses_config_and_runs_folds_in_order(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

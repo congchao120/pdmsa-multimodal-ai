@@ -5,10 +5,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-from pathlib import Path
 import sys
-from typing import Iterable
-
+from collections.abc import Iterable
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIRECTORY = PROJECT_ROOT / "src"
@@ -70,7 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--seed",
         type=int,
         default=12345,
-        help="KFold random state used by retained nnU-Net v2 do_split (default: 12345).",
+        help="KFold random state (default: 12345).",
     )
     parser.add_argument(
         "--overwrite",
@@ -105,7 +104,7 @@ def main(argv: Iterable[str] | None = None) -> int:
 
         print(f"Cases read from {source_description}: {len(case_ids)}")
         print(f"Folds: {args.n_splits}; seed: {args.seed}; validation sizes: {validation_sizes}")
-        print(f"Wrote: {output.resolve()}")
+        print(f"Wrote: {output.name}")
         print(f"SHA-256: {_sha256(output)}")
         print("Audit: every case appears in validation exactly once; no train/val overlap.")
         return 0

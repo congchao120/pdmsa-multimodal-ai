@@ -111,9 +111,7 @@ def audit_four_fold_assignments(
             f"Fold identifiers must be contiguous from zero; found {sorted(observed_folds)}"
         )
 
-    appearances = (
-        assignments.loc[assignments["role"] == "validation"].groupby("subject_id").size()
-    )
+    appearances = assignments.loc[assignments["role"] == "validation"].groupby("subject_id").size()
     if len(appearances) != subjects or not (appearances == 1).all():
         raise ValueError("Every subject must appear in validation exactly once")
     for fold, group in assignments.groupby("fold"):
@@ -124,9 +122,7 @@ def audit_four_fold_assignments(
             if subset["label"].nunique() != 2:
                 raise ValueError(f"Fold {fold}, role {role} does not contain both classes")
         train_ids = set(group.loc[group["role"] == "train", "subject_id"].astype(str))
-        validation_ids = set(
-            group.loc[group["role"] == "validation", "subject_id"].astype(str)
-        )
+        validation_ids = set(group.loc[group["role"] == "validation", "subject_id"].astype(str))
         if train_ids.intersection(validation_ids):
             raise ValueError(f"Fold {fold} contains train/validation subject leakage")
 
@@ -136,8 +132,7 @@ def audit_four_fold_assignments(
         validation_appearances_min=int(appearances.min()),
         validation_appearances_max=int(appearances.max()),
         role_counts={
-            str(key): int(value)
-            for key, value in assignments["role"].value_counts().items()
+            str(key): int(value) for key, value in assignments["role"].value_counts().items()
         },
     )
 
@@ -161,12 +156,14 @@ def audit_manifest_assignment_alignment(
         extra = sorted(assignment_ids.difference(manifest_ids))
         raise ValueError(
             "Manifest/assignment subject mismatch: "
-            f"missing_from_assignments={missing[:10]}, extra_in_assignments={extra[:10]}"
+            f"missing_from_assignments={len(missing)}, extra_in_assignments={len(extra)}"
         )
 
-    manifest_labels = subjects.assign(
-        subject_id=subjects["subject_id"].astype(str)
-    ).set_index("subject_id")["label"].astype(int)
+    manifest_labels = (
+        subjects.assign(subject_id=subjects["subject_id"].astype(str))
+        .set_index("subject_id")["label"]
+        .astype(int)
+    )
     assignment_labels = (
         assignments.assign(subject_id=assignments["subject_id"].astype(str))
         .drop_duplicates("subject_id")
@@ -177,8 +174,5 @@ def audit_manifest_assignment_alignment(
         manifest_labels != assignment_labels.reindex(manifest_labels.index)
     ]
     if not mismatched.empty:
-        raise ValueError(
-            "Manifest/assignment label mismatch for subjects: "
-            f"{mismatched.index[:10].tolist()}"
-        )
+        raise ValueError(f"Manifest/assignment label mismatch for {len(mismatched)} subjects")
     return audit

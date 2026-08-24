@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 try:
@@ -29,8 +29,48 @@ def resolve_config_path(config: dict[str, Any], value: str | Path) -> Path:
 
 
 def public_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Return a serialization-safe copy without internal path helper keys."""
+    """Return a serialization-safe configuration without credentials or local paths."""
     result = copy.deepcopy(config)
     result.pop("_config_path", None)
     result.pop("_config_dir", None)
-    return result
+
+    secret_terms = ("password", "passwd", "secret", "token", "api_key", "private_key")
+    path_keys = {
+        "manifest",
+        "root",
+        "output_dir",
+        "assignments_file",
+        "checkpoint",
+        "cache_dir",
+    }
+
+    def basename(value: str) -> str:
+        normalized = value.replace("\\", "/").rstrip("/")
+        return normalized.rsplit("/", 1)[-1] or "<local-path>"
+
+    def is_local_model_path(value: str) -> bool:
+        return (
+            value.startswith((".", "~"))
+            or PurePosixPath(value).is_absolute()
+            or PureWindowsPath(value).is_absolute()
+        )
+
+    def sanitize(value: Any, key: str = "") -> Any:
+        lowered = key.lower()
+        if any(term in lowered for term in secret_terms):
+            return "<redacted>"
+        if isinstance(value, dict):
+            return {item_key: sanitize(item, str(item_key)) for item_key, item in value.items()}
+        if isinstance(value, list):
+            return [sanitize(item) for item in value]
+        if isinstance(value, tuple):
+            return [sanitize(item) for item in value]
+        if isinstance(value, (str, Path)):
+            text = str(value)
+            if lowered in path_keys:
+                return basename(text)
+            if lowered == "name_or_path" and is_local_model_path(text):
+                return basename(text)
+        return value
+
+    return sanitize(result)

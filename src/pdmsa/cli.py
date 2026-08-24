@@ -51,7 +51,7 @@ def gradcam_main() -> None:
         target_class=args.target_class,
         target_layer_index=args.target_layer,
     )
-    print(f"Grad-CAM artifacts saved to {output}")
+    print(f"Grad-CAM artifacts saved to {output.name}")
 
 
 def audit_manifest_main() -> None:
@@ -73,8 +73,11 @@ def audit_manifest_main() -> None:
 
 
 def make_splits_main() -> None:
-    parser = _config_parser(
-        "Create frozen patient-level four-fold train/validation assignments"
+    parser = _config_parser("Create frozen patient-level four-fold train/validation assignments")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace an existing assignment file",
     )
     args = parser.parse_args()
     config = load_config(args.config)
@@ -96,8 +99,12 @@ def make_splits_main() -> None:
     )
     output = resolve_config_path(config, split_config["assignments_file"])
     output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists() and not args.overwrite:
+        raise FileExistsError(
+            f"Assignment file already exists: {output.name}. Pass --overwrite to replace it."
+        )
     assignments.to_csv(output, index=False)
-    print(f"Saved {len(assignments)} assignment rows to {output}")
+    print(f"Saved {len(assignments)} assignment rows to {output.name}")
 
 
 def train_fold_main() -> None:
@@ -105,7 +112,7 @@ def train_fold_main() -> None:
     parser.add_argument("--fold", required=True, type=int)
     args = parser.parse_args()
     output = train_fold(load_config(args.config), args.fold)
-    print(f"Fold outputs saved to {output}")
+    print(f"Fold outputs saved to {output.name}")
 
 
 def _prepare_slice_frame(frame: pd.DataFrame, positive_label: int) -> pd.DataFrame:
@@ -137,9 +144,7 @@ def aggregate_msv_main() -> None:
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--expected-slices", type=int, default=5)
-    parser.add_argument(
-        "--slice-offsets", type=int, nargs="+", default=list(DEFAULT_SLICE_OFFSETS)
-    )
+    parser.add_argument("--slice-offsets", type=int, nargs="+", default=list(DEFAULT_SLICE_OFFSETS))
     parser.add_argument("--threshold", type=float, default=0.5, help="Patient-level threshold")
     parser.add_argument(
         "--method", choices=["soft", "hard", "weighted_soft"], default="weighted_soft"
@@ -154,7 +159,7 @@ def aggregate_msv_main() -> None:
     parser.add_argument(
         "--threshold-inclusive",
         action="store_true",
-        help="Use >= threshold (source scripts used strict > threshold)",
+        help="Use >= threshold instead of the default strict > threshold rule",
     )
     parser.add_argument("--positive-label", type=int, choices=[0, 1], default=1)
     args = parser.parse_args()
@@ -174,38 +179,47 @@ def aggregate_msv_main() -> None:
     output = Path(args.output).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     output_frame.to_csv(output, index=False)
-    print(f"Saved {len(output_frame)} subject predictions to {output}")
+    print(f"Saved {len(output_frame)} subject predictions to {output.name}")
 
 
 def evaluate_oof_main() -> None:
     """Pool held-out fold predictions and compute patient-level OOF metrics once."""
     parser = argparse.ArgumentParser(description="Evaluate pooled out-of-fold slice predictions")
-    parser.add_argument("--input", required=True)
+    parser.add_argument(
+        "--input",
+        required=True,
+        nargs="+",
+        help="One or more held-out slice-prediction CSV files",
+    )
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--expected-slices", type=int, default=5)
-    parser.add_argument(
-        "--slice-offsets", type=int, nargs="+", default=list(DEFAULT_SLICE_OFFSETS)
-    )
+    parser.add_argument("--slice-offsets", type=int, nargs="+", default=list(DEFAULT_SLICE_OFFSETS))
     parser.add_argument("--expected-subjects", type=int)
+    parser.add_argument("--expected-folds", type=int, default=4)
     parser.add_argument("--patient-threshold", type=float, default=0.5)
     parser.add_argument(
         "--method", choices=["soft", "hard", "weighted_soft"], default="weighted_soft"
     )
-    parser.add_argument(
-        "--weights", type=float, nargs="+", default=list(DEFAULT_MSV_WEIGHTS)
-    )
+    parser.add_argument("--weights", type=float, nargs="+", default=list(DEFAULT_MSV_WEIGHTS))
     parser.add_argument("--threshold-inclusive", action="store_true")
     parser.add_argument("--positive-label", type=int, choices=[0, 1], default=1)
     parser.add_argument("--bootstrap-repetitions", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    frame = _prepare_slice_frame(
-        pd.read_csv(args.input, dtype={"subject_id": "string"}), args.positive_label
-    )
+    input_frames = [pd.read_csv(path, dtype={"subject_id": "string"}) for path in args.input]
+    frame = _prepare_slice_frame(pd.concat(input_frames, ignore_index=True), args.positive_label)
+    if args.expected_folds < 2:
+        raise ValueError("expected-folds must be at least 2")
     fold_column = "fold" if "fold" in frame.columns else "outer_fold"
     if fold_column not in frame.columns:
         raise ValueError("Pooled OOF input must contain fold")
+    observed_folds = set(pd.to_numeric(frame[fold_column], errors="raise").astype(int))
+    expected_folds = set(range(args.expected_folds))
+    if observed_folds != expected_folds:
+        raise ValueError(
+            f"Expected held-out folds {sorted(expected_folds)}, found {sorted(observed_folds)}"
+        )
     folds_per_subject = frame.groupby("subject_id")[fold_column].nunique()
     if not (folds_per_subject == 1).all():
         raise ValueError("A subject has predictions from more than one held-out fold")
@@ -253,4 +267,4 @@ def evaluate_oof_main() -> None:
     subject_predictions.to_csv(output_dir / "oof_subject_predictions.csv", index=False)
     with (output_dir / "oof_metrics.json").open("w", encoding="utf-8") as handle:
         json.dump({"point_estimates": metrics, "bootstrap_ci": intervals}, handle, indent=2)
-    print(f"Saved pooled OOF results for {len(subject_predictions)} subjects to {output_dir}")
+    print(f"Saved pooled OOF results for {len(subject_predictions)} subjects to {output_dir.name}")

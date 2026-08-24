@@ -1,70 +1,50 @@
-# nnU-Net four-fold segmentation reproducibility
+# nnU-Net four-fold segmentation
 
-Segmentation is a separate upstream stage that produces ROI masks for the classification
-pipeline. This repository provides an auditable four-fold nnU-Net v2 retraining recipe; it does
-not distribute patient data, manual labels, real split assignments, predictions, logs, or model
-weights.
+The segmentation workflow produces ROI masks for slice selection and classification. It uses
+three MRI channels (FLAIR, T1w, and T2w), the nnU-Net v2 `3d_fullres` configuration, and four
+cross-validation folds. The executable settings are stored in
+[`configs/segmentation_fourfold.toml`](../configs/segmentation_fourfold.toml).
 
-## Recorded configuration
+## Install
 
-The executable methods record is `configs/segmentation_fourfold.toml`. The main settings are:
-
-| Item | Value |
-| --- | --- |
-| Dataset | `Dataset800_PD` (ID 800), 155 training cases |
-| Channels | `0000`: FLAIR, `0001`: T1w, `0002`: T2w |
-| Foreground labels | Generic `Region 1`--`Region 4` (values 1--4) |
-| Configuration | `3d_fullres`, `nnUNetPlans`, `PlainConvUNet` |
-| Trainer | `nnUNetTrainer_150epochs` |
-| Cross-validation | folds 0--3 |
-| Split algorithm | sorted case keys + stratified `KFold(n_splits=4, shuffle=True, random_state=12345)` |
-| Patch / batch | `[20, 320, 256]` / 32 |
-
-The generic region labels are copied from the retained `dataset.json`. Their anatomical meanings
-have not been independently confirmed and are deliberately not guessed in this repository. A
-privacy-safe dataset metadata template is available at
-`segmentation/templates/Dataset800_PD/dataset.json`.
-
-## 1. Prepare the environment
-
-The repository utilities require NumPy and scikit-learn for split generation:
+Create a dedicated environment, install the PyTorch build appropriate for the local hardware,
+and install the segmentation dependencies:
 
 ```bash
+python -m venv .venv-nnunet
+source .venv-nnunet/bin/activate          # Windows: .venv-nnunet\Scripts\activate
+python -m pip install --upgrade pip
+# Install torch using https://pytorch.org/get-started/locally/
 python -m pip install -r requirements/segmentation.txt
 ```
 
-Install the audited retained nnU-Net source tree separately:
+Confirm that the configured trainer is available:
 
 ```bash
-python -m pip install -e /absolute/path/to/audited/retained/nnUNet/source
+python -c "from nnunetv2.training.nnUNetTrainer.variants.training_length.nnUNetTrainer_Xepochs import nnUNetTrainer_100epochs"
 ```
 
-Confirm that the existing 150-epoch trainer variant is importable:
+## Dataset layout
 
-```bash
-python -c "from nnunetv2.training.nnUNetTrainer.variants.training_length.nnUNetTrainer_Xepochs import nnUNetTrainer_150epochs"
-```
-
-## 2. Prepare the authorized dataset
-
-Use nnU-Net v2 channel suffixes and keep all private files outside the Git checkout:
+Keep the nnU-Net runtime directories outside the Git checkout:
 
 ```text
 /secure/nnUNet_raw/
 └── Dataset800_PD/
     ├── dataset.json
     ├── imagesTr/
-    │   ├── CASE_A_0000.nii.gz
-    │   ├── CASE_A_0001.nii.gz
-    │   └── CASE_A_0002.nii.gz
+    │   ├── CASE_A_0000.nii.gz    # FLAIR
+    │   ├── CASE_A_0001.nii.gz    # T1w
+    │   └── CASE_A_0002.nii.gz    # T2w
     └── labelsTr/
         └── CASE_A.nii.gz
 ```
 
-Replace the synthetic `CASE_A` example with the local case key. The same key must identify all
-three channels and the corresponding label. Do not copy actual case keys into the repository.
+The matching metadata template is
+[`segmentation/templates/Dataset800_PD/dataset.json`](../segmentation/templates/Dataset800_PD/dataset.json).
+Use the same pseudonymous case key for all channels and the corresponding label.
 
-Inspect the installed tools and the three explicit nnU-Net storage locations:
+Inspect the nnU-Net installation and runtime directories:
 
 ```bash
 python scripts/segmentation/nnunet_pipeline.py check \
@@ -73,9 +53,9 @@ python scripts/segmentation/nnunet_pipeline.py check \
   --results-dir /secure/nnUNet_results
 ```
 
-## 3. Plan and preprocess
+## Plan and preprocess
 
-Run dataset integrity checks and create the retained `3d_fullres` configuration:
+Preview the command first:
 
 ```bash
 python scripts/segmentation/nnunet_pipeline.py plan \
@@ -88,14 +68,13 @@ python scripts/segmentation/nnunet_pipeline.py plan \
   --dry-run
 ```
 
-Review the printed paths and upstream command, then remove `--dry-run` to execute it. Compare the
-generated plan against `configs/segmentation_fourfold.toml`, especially the patch size, target
-spacing, normalization, and batch size. Stop if these values differ; do not silently force a new
-plan and describe it as the recorded one.
+Remove `--dry-run` after checking the displayed paths and command.
 
-## 4. Generate the four-fold split
+## Generate four folds
 
-Generate `splits_final.json` locally after preprocessing and before training:
+The split generator sorts the case keys and applies shuffled `KFold` with seed `12345`. It reads
+filenames only and writes nnU-Net's `splits_final.json` format. For 156 cases, each fold contains
+117 training cases and 39 validation cases.
 
 ```bash
 python scripts/segmentation/make_fourfold_splits.py \
@@ -106,9 +85,12 @@ python scripts/segmentation/make_fourfold_splits.py \
   --seed 12345
 ```
 
-## 5. Train folds 0--3
+The training wrapper validates fold coverage, train/validation separation, validation frequency,
+and configured case counts before invoking nnU-Net.
 
-First preview all four upstream commands from the TOML configuration:
+## Train folds 0 through 3
+
+Preview all four commands:
 
 ```bash
 python scripts/segmentation/nnunet_pipeline.py train-fourfold \
@@ -119,9 +101,10 @@ python scripts/segmentation/nnunet_pipeline.py train-fourfold \
   --dry-run
 ```
 
-## 6. Predict with the four-fold ensemble
+Remove `--dry-run` to train. The configuration selects `nnUNetTrainer_100epochs`, `nnUNetPlans`,
+`3d_fullres`, and folds 0 through 3.
 
-Prediction inputs follow the same three-channel suffix convention but do not require `labelsTr`:
+## Predict with the four-fold ensemble
 
 ```bash
 python scripts/segmentation/nnunet_pipeline.py predict-fourfold \
@@ -134,18 +117,11 @@ python scripts/segmentation/nnunet_pipeline.py predict-fourfold \
   --dry-run
 ```
 
-This fixes inference to folds 0--3 and `checkpoint_final.pth`. The retained prediction metadata
-records step size 0.5 with Gaussian weighting and mirroring enabled; these values are also recorded
-in the TOML file. The wrapper emits `-step_size 0.5`, retains test-time mirroring by omitting
-`--disable_tta`, validates that Gaussian weighting remains enabled, and adds
-`--save_probabilities`. Verify the complete printed command before removing `--dry-run`.
+The ensemble uses folds 0 through 3 and `checkpoint_final.pth`. Remove `--dry-run` after checking
+the complete command.
 
-## Reproducibility and publication boundary
+## Data safety
 
-For a completed rerun, retain the following inside the approved secure environment:
-
-- the exact audited nnU-Net source revision and a full environment lock;
-- the generated plans, fingerprint, four-fold `splits_final.json`, and its SHA-256 checksum;
-- sanitized command logs and per-fold validation summaries;
-- checksums for each checkpoint and derived prediction artifact.
-
+Do not commit `nnUNet_raw`, `nnUNet_preprocessed`, `nnUNet_results`, `splits_final.json`, medical
+images, labels, predictions, logs, or checkpoints. The repository ignore rules exclude these
+artifacts by default.

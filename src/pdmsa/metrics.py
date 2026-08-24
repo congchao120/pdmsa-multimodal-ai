@@ -27,12 +27,10 @@ def classification_metrics(
     if positive_label not in {0, 1}:
         raise ValueError("positive_label must be 0 or 1")
     positive_truth = (truth == positive_label).astype(int)
-    positive_prediction = (
-        score >= threshold if threshold_inclusive else score > threshold
-    ).astype(int)
-    tn, fp, fn, tp = confusion_matrix(
-        positive_truth, positive_prediction, labels=[0, 1]
-    ).ravel()
+    positive_prediction = (score >= threshold if threshold_inclusive else score > threshold).astype(
+        int
+    )
+    tn, fp, fn, tp = confusion_matrix(positive_truth, positive_prediction, labels=[0, 1]).ravel()
     sensitivity = tp / (tp + fn) if tp + fn else float("nan")
     specificity = tn / (tn + fp) if tn + fp else float("nan")
     return {
@@ -41,9 +39,7 @@ def classification_metrics(
         "threshold": float(threshold),
         "threshold_inclusive": bool(threshold_inclusive),
         "accuracy": float(accuracy_score(positive_truth, positive_prediction)),
-        "balanced_accuracy": float(
-            balanced_accuracy_score(positive_truth, positive_prediction)
-        ),
+        "balanced_accuracy": float(balanced_accuracy_score(positive_truth, positive_prediction)),
         "macro_f1": float(f1_score(positive_truth, positive_prediction, average="macro")),
         "sensitivity": float(sensitivity),
         "specificity": float(specificity),

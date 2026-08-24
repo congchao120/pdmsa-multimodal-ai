@@ -7,7 +7,6 @@ import pandas as pd
 
 from .manifest import DEFAULT_SLICE_OFFSETS
 
-
 DEFAULT_MSV_WEIGHTS = (0.10, 0.20, 0.40, 0.20, 0.10)
 
 REQUIRED_SLICE_COLUMNS = {
@@ -56,9 +55,7 @@ def aggregate_slice_predictions(
     if not np.isfinite(patient_threshold) or not 0 <= patient_threshold <= 1:
         raise ValueError("patient_threshold must be finite and between 0 and 1")
     offset_array = np.asarray(expected_slice_offsets, dtype=float)
-    if not np.isfinite(offset_array).all() or not (
-        offset_array == np.floor(offset_array)
-    ).all():
+    if not np.isfinite(offset_array).all() or not (offset_array == np.floor(offset_array)).all():
         raise ValueError("expected_slice_offsets must contain finite integers")
     expected_offsets = tuple(offset_array.astype(int).tolist())
     if len(expected_offsets) != expected_slices or len(set(expected_offsets)) != expected_slices:
@@ -115,21 +112,19 @@ def aggregate_slice_predictions(
     for subject_id, group in normalized.groupby("subject_id", sort=True):
         ordered = group.sort_values("slice_offset")
         if ordered["y_true"].nunique() != 1:
-            raise ValueError(f"Subject {subject_id} has inconsistent y_true values")
+            raise ValueError("A subject has inconsistent y_true values")
         if ordered["center_slice_index"].nunique() != 1:
-            raise ValueError(f"Subject {subject_id} has inconsistent center_slice_index values")
+            raise ValueError("A subject has inconsistent center_slice_index values")
         observed_offsets = tuple(ordered["slice_offset"].astype(int).tolist())
         if observed_offsets != expected_offsets:
             raise ValueError(
-                f"Subject {subject_id} must have offsets {sorted(expected_offsets)}; "
+                f"A subject must have offsets {sorted(expected_offsets)}; "
                 f"found {list(observed_offsets)}"
             )
         center_slice_index = int(ordered["center_slice_index"].iloc[0])
         expected_indices = center_slice_index + ordered["slice_offset"].astype(int)
         if not (ordered["slice_index"].astype(int).to_numpy() == expected_indices.to_numpy()).all():
-            raise ValueError(
-                f"Subject {subject_id} has slice_index values inconsistent with its center"
-            )
+            raise ValueError("A subject has slice_index values inconsistent with its center")
 
         scores = ordered["p_positive"].astype(float).to_numpy()
         slice_votes = ordered["is_positive_prediction"].to_numpy(dtype=int)

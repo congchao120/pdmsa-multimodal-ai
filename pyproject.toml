@@ -44,6 +44,9 @@ explainability = [
   "grad-cam>=1.5,<2",
   "opencv-python-headless>=4.8,<5",
 ]
+segmentation = [
+  "nnunetv2>=2.1,<3",
+]
 dev = [
   "pytest>=8,<9",
   "ruff>=0.6,<1",
@@ -70,6 +73,9 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
-
 
 DEFAULT_SLICE_OFFSETS = (-2, -1, 0, 1, 2)
 REQUIRED_BASE_COLUMNS = (
@@ -97,32 +96,28 @@ def validate_manifest(
     label_counts_per_subject = normalized.groupby("subject_id")["label"].nunique()
     inconsistent = label_counts_per_subject[label_counts_per_subject != 1].index.tolist()
     if inconsistent:
-        raise ValueError(f"Subjects with inconsistent labels: {inconsistent[:10]}")
+        raise ValueError(f"Found {len(inconsistent)} subjects with inconsistent labels")
 
     center_counts_per_subject = normalized.groupby("subject_id")["center_slice_index"].nunique()
     inconsistent_centers = center_counts_per_subject[center_counts_per_subject != 1].index.tolist()
     if inconsistent_centers:
         raise ValueError(
-            f"Subjects with inconsistent center_slice_index values: {inconsistent_centers[:10]}"
+            "Found "
+            f"{len(inconsistent_centers)} subjects with inconsistent center_slice_index values"
         )
 
     expected_absolute = normalized["center_slice_index"] + normalized["slice_offset"]
     inconsistent_mapping = normalized["slice_index"] != expected_absolute
     if inconsistent_mapping.any():
-        examples = normalized.loc[
-            inconsistent_mapping,
-            ["subject_id", "center_slice_index", "slice_offset", "slice_index"],
-        ].head(10)
         raise ValueError(
-            "slice_index must equal center_slice_index + slice_offset; mismatches:\n"
-            + examples.to_string(index=False)
+            "slice_index must equal center_slice_index + slice_offset; "
+            f"found {int(inconsistent_mapping.sum())} mismatched rows"
         )
 
     duplicate_key = normalized.duplicated(["subject_id", "slice_offset"], keep=False)
     if duplicate_key.any():
-        examples = normalized.loc[duplicate_key, ["subject_id", "slice_offset"]].head(10)
         raise ValueError(
-            f"Duplicate subject/slice-offset rows detected:\n{examples.to_string(index=False)}"
+            f"Duplicate subject/slice-offset rows detected: {int(duplicate_key.sum())} rows"
         )
 
     for channel in channel_tuple:
@@ -132,8 +127,7 @@ def validate_manifest(
         reused = normalized_paths[normalized_paths.duplicated(keep=False)]
         if not reused.empty:
             raise ValueError(
-                f"Channel {channel} reuses a file path across manifest rows; examples: "
-                f"{reused.head(10).tolist()}"
+                f"Channel {channel} reuses a file path across {len(reused)} manifest rows"
             )
 
     slices = normalized.groupby("subject_id")["slice_offset"].nunique()
@@ -141,8 +135,8 @@ def validate_manifest(
         bad = slices[slices != expected_slices]
         if not bad.empty:
             raise ValueError(
-                f"Expected {expected_slices} unique slices per subject; mismatches: "
-                f"{bad.head(10).to_dict()}"
+                f"Expected {expected_slices} unique slices per subject; "
+                f"found {len(bad)} subjects with a different count"
             )
 
     expected: tuple[int, ...] = tuple()
@@ -156,37 +150,29 @@ def validate_manifest(
                 f"{len(expected)} != {expected_slices}"
             )
         expected_set = set(expected)
-        bad_offsets: dict[str, list[int]] = {}
-        for subject_id, group in normalized.groupby("subject_id", sort=False):
+        bad_offset_count = 0
+        for _, group in normalized.groupby("subject_id", sort=False):
             observed = set(group["slice_offset"].astype(int))
             if observed != expected_set:
-                bad_offsets[str(subject_id)] = sorted(observed)
-                if len(bad_offsets) >= 10:
-                    break
-        if bad_offsets:
+                bad_offset_count += 1
+        if bad_offset_count:
             raise ValueError(
                 f"Expected slice offsets {sorted(expected_set)} for every subject; "
-                f"mismatches: {bad_offsets}"
+                f"found {bad_offset_count} subjects with a different offset set"
             )
 
     if check_files:
         root = Path(data_root or ".").expanduser().resolve()
-        missing_paths: list[str] = []
+        missing_path_count = 0
         for channel in channel_tuple:
             for value in frame[channel].astype(str):
                 path = Path(value).expanduser()
                 if not path.is_absolute():
                     path = root / path
                 if not path.is_file():
-                    missing_paths.append(str(path))
-                    if len(missing_paths) >= 20:
-                        break
-            if len(missing_paths) >= 20:
-                break
-        if missing_paths:
-            raise FileNotFoundError(
-                "Missing modality files (first 20):\n" + "\n".join(missing_paths)
-            )
+                    missing_path_count += 1
+        if missing_path_count:
+            raise FileNotFoundError(f"Missing {missing_path_count} configured image files")
 
     subject_labels = normalized.drop_duplicates("subject_id")
     class_counts = {

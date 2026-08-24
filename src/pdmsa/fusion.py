@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 from PIL import Image
@@ -27,8 +27,7 @@ def fuse_channels(
     """Stack three explicitly ordered grayscale planes into one RGB PNG.
 
     ``paths`` is ordered as red, green, and blue. Pixel intensities are copied
-    directly, matching the retained preprocessing approach; no per-image
-    renormalization is performed. The caller must record which modality occupies
+    directly without per-image renormalization. The caller must record which modality occupies
     each channel. Explicit paths replace unsafe positional ``os.listdir`` pairing.
     """
     path_list = list(paths)

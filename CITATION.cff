@@ -1,7 +1,5 @@
 cff-version: 1.2.0
-message: >-
-  If you use this software, please cite this repository release and the associated article
-  once its bibliographic record is available.
+message: "If you use this software, please cite the repository."
 title: "PD/MSA-P Multimodal PET/MRI Classification Pipeline"
 type: software
 version: 0.2.0
@@ -21,4 +19,3 @@ authors:
     given-names: "Wenping"
   - family-names: "Chen"
     given-names: "Xiao"
-# Add the article DOI, release date, and approved SPDX license only after they are assigned.

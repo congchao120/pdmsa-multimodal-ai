@@ -6,7 +6,6 @@ from typing import Any
 import pandas as pd
 from PIL import Image
 
-
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
@@ -15,8 +14,8 @@ def build_transforms(image_size: int, augmentation: dict[str, Any], training: bo
     """Build preprocessing for the shared 384-pixel ViT.
 
     Every pre-fused RGB slice is resized to the configured square input and
-    ImageNet-normalized. Augmentation remains an explicitly enabled option and
-    is disabled in the article-aligned configuration.
+    ImageNet-normalized. Augmentation is applied only to the training dataset
+    when explicitly enabled.
     """
     from torchvision import transforms
 
@@ -63,9 +62,8 @@ def build_transforms(image_size: int, augmentation: dict[str, Any], training: bo
 class FusedRGBSliceDataset:
     """Load one pre-fused RGB PNG for each subject and slice.
 
-    Fusion is intentionally not repeated inside the classifier. The source
-    scripts consumed already prepared three-channel PNG files, where channel
-    meaning depends on the modality-combination experiment.
+    Fusion is performed before classification. Channel meaning depends on the
+    modality combination used to create each RGB image.
     """
 
     def __init__(
@@ -111,31 +109,5 @@ class FusedRGBSliceDataset:
             "center_slice_index": int(record["center_slice_index"]),
             "slice_offset": int(record["slice_offset"]),
             "slice_index": int(record["slice_index"]),
-            # Do not propagate private server roots into prediction tables.
-            "input_file": Path(str(record[self.image_column])).name,
         }
         return image, label, metadata
-
-
-class MultimodalSliceDataset(FusedRGBSliceDataset):
-    """Backward-compatible name for callers migrating from the first release.
-
-    New code should use :class:`FusedRGBSliceDataset`. This adapter deliberately
-    accepts only a single path column; on-the-fly modality stacking is not the
-    behavior of the retained source classification scripts.
-    """
-
-    def __init__(
-        self,
-        frame: pd.DataFrame,
-        channels: list[str],
-        data_root: str | Path,
-        image_size: int | None = None,
-        normalization: str | None = None,
-        transform=None,
-    ) -> None:
-        if len(channels) != 1:
-            raise ValueError(
-                "The source-aligned classifier expects one pre-fused RGB path column"
-            )
-        super().__init__(frame, data_root, image_column=channels[0], transform=transform)

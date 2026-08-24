@@ -41,16 +41,14 @@ class VotingTests(unittest.TestCase):
         self.assertEqual(first, second)
 
     def test_positive_class_zero_keeps_class_label_semantics(self):
-        frame = prediction_frame(
-            subject_id="S0", label=0, scores=(0.8, 0.7, 0.6, 0.4, 0.9)
-        )
+        frame = prediction_frame(subject_id="S0", label=0, scores=(0.8, 0.7, 0.6, 0.4, 0.9))
         frame["predicted_class_label"] = [0, 0, 0, 1, 0]
         result = aggregate_slice_predictions(frame, positive_label=0)
         self.assertEqual(result.loc[0, "patient_prediction"], 0)
         self.assertEqual(result.loc[0, "is_positive_prediction"], 1)
         self.assertEqual(result.loc[0, "positive_label"], 0)
 
-    def test_article_weights_and_strict_threshold(self):
+    def test_configured_weights_and_strict_threshold(self):
         frame = prediction_frame(center=12, scores=(0.0, 0.0, 1.0, 0.5, 0.0))
         result = aggregate_slice_predictions(
             frame,

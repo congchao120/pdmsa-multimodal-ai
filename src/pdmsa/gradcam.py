@@ -14,7 +14,7 @@ from .reproducibility import file_sha256
 
 
 def _load_rgb_image(path: Path, image_size: int):
-    """Return both the display RGB array and the normalized ViT input tensor."""
+    """Return the display RGB array and normalized ViT input tensor."""
     from PIL import Image
     from torchvision import transforms
 
@@ -31,11 +31,11 @@ def _load_rgb_image(path: Path, image_size: int):
             ),
         ]
     )
-    return image, display, transform(image).unsqueeze(0)
+    return display, transform(image).unsqueeze(0)
 
 
 def _extract_state_dict(payload: Any) -> Mapping[str, Any]:
-    """Accept the plain state dict used by the source code and common wrappers."""
+    """Accept a plain state dictionary or common checkpoint wrappers."""
     if not isinstance(payload, Mapping):
         raise ValueError("The checkpoint does not contain a PyTorch state dictionary")
 
@@ -55,7 +55,7 @@ def _extract_state_dict(payload: Any) -> Mapping[str, Any]:
 
 
 def _load_checkpoint(model: Any, checkpoint_path: Path) -> None:
-    """Load a source-code or wrapped checkpoint without executing pickled code."""
+    """Load a state-dictionary checkpoint without executing pickled code."""
     import torch
 
     try:
@@ -70,6 +70,7 @@ def _load_checkpoint(model: Any, checkpoint_path: Path) -> None:
 
 def _public_model_metadata(model_config: Mapping[str, Any]) -> dict[str, Any]:
     """Remove local filesystem locations before serializing model provenance."""
+
     def sanitize(value: Any) -> Any:
         if isinstance(value, Mapping):
             return {key: sanitize(item) for key, item in value.items()}
@@ -102,11 +103,7 @@ def create_gradcam_artifacts(
     target_class: int | None = None,
     target_layer_index: int | None = None,
 ) -> Path:
-    """Create auditable Grad-CAM artifacts for one pre-fused RGB slice.
-
-    The retained source selected encoder layer 8 and class 0. Those values remain
-    configurable because the visualized class and layer must be reported with each image.
-    """
+    """Create Grad-CAM artifacts for one pre-fused RGB slice."""
     import torch
     from PIL import Image
     from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -130,7 +127,7 @@ def create_gradcam_artifacts(
     if image_size <= 0:
         raise ValueError("data.image_size must be positive")
 
-    original, display_rgb, tensor = _load_rgb_image(image_path, image_size)
+    display_rgb, tensor = _load_rgb_image(image_path, image_size)
 
     model_config = dict(config["model"])
     model_config.pop("checkpoint", None)
@@ -165,15 +162,11 @@ def create_gradcam_artifacts(
     heatmap = np.clip(cam * 255.0, 0, 255).astype(np.uint8)
 
     destination.mkdir(parents=True, exist_ok=True)
-    original.save(destination / "input.png")
     np.save(destination / "gradcam.npy", cam)
     Image.fromarray(heatmap).save(destination / "gradcam.png")
     Image.fromarray(overlay).save(destination / "overlay.png")
 
     metadata = {
-        "input_file": image_path.name,
-        "input_sha256": file_sha256(image_path),
-        "checkpoint_file": checkpoint_path.name,
         "checkpoint_sha256": file_sha256(checkpoint_path),
         "image_size": image_size,
         "target_class": int(target_class),

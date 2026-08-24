@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import random
-import hashlib
 from pathlib import Path
 
 import numpy as np

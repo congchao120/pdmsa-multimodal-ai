@@ -14,7 +14,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install --upgrade pip
       - run: python -m pip install numpy pandas Pillow scikit-learn tomli
+      - run: python -m pip install -r requirements/dev.txt
       - run: python -m pip install -e . --no-deps
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
       - run: PYTHONPATH=src python -m unittest discover -s tests -v
       - run: pdmsa-audit-manifest --config configs/classification.toml
       - run: pdmsa-make-splits --config configs/classification.toml

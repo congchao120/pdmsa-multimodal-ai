@@ -39,6 +39,25 @@ DICOMDIR
 *.hdr
 *.mgz
 *.mat
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.parquet
+*.feather
+*.sqlite
+*.sqlite3
+*.db
+*.jsonl
+*.ipynb
+*.log
+*.zip
+*.7z
+*.tar
+*.tar.gz
+sub-*/
+ses-*/
 
 # Checkpoints, arrays, experiment outputs, and tracking logs
 *.pth

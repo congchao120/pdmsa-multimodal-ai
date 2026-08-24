@@ -7,16 +7,15 @@ copying subject data into logs or repository artifacts.
 
 from __future__ import annotations
 
-from collections import Counter
 import json
 import os
-from pathlib import Path
 import tempfile
-from typing import Iterable, Mapping, Sequence
+from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
+from pathlib import Path
 
 import numpy as np
 from sklearn.model_selection import KFold
-
 
 Split = dict[str, list[str]]
 
@@ -76,9 +75,7 @@ def read_case_ids(case_list: str | Path) -> list[str]:
         raise FileNotFoundError(f"Case-list file not found: {path}")
     lines = path.read_text(encoding="utf-8-sig").splitlines()
     case_ids = [
-        line.strip()
-        for line in lines
-        if line.strip() and not line.lstrip().startswith("#")
+        line.strip() for line in lines if line.strip() and not line.lstrip().startswith("#")
     ]
     return _normalise_case_ids(case_ids)
 
@@ -90,19 +87,15 @@ def make_kfold_splits(
 ) -> list[Split]:
     """Create balanced, deterministic nnU-Net ``train``/``val`` splits.
 
-    This mirrors nnU-Net v2's retained ``do_split`` implementation: case keys
-    are sorted with NumPy and passed to scikit-learn ``KFold`` with shuffling
-    and a fixed random state.  The only study-specific change is four folds
-    instead of nnU-Net's usual five.
+    Case keys are sorted with NumPy and passed to scikit-learn ``KFold`` with
+    shuffling and a fixed random state.
     """
 
     cases = _normalise_case_ids(case_ids)
     if n_splits < 2:
         raise ValueError("n_splits must be at least 2")
     if len(cases) < n_splits:
-        raise ValueError(
-            f"At least n_splits={n_splits} cases are required; found {len(cases)}"
-        )
+        raise ValueError(f"At least n_splits={n_splits} cases are required; found {len(cases)}")
 
     sorted_keys = np.sort(np.asarray(cases, dtype=str))
     splitter = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
@@ -185,9 +178,7 @@ def write_splits_final(
             "Pass overwrite=True only after reviewing it."
         )
 
-    serialisable = [
-        {"train": list(split["train"]), "val": list(split["val"])} for split in splits
-    ]
+    serialisable = [{"train": list(split["train"]), "val": list(split["val"])} for split in splits]
     payload = json.dumps(serialisable, ensure_ascii=False, indent=2) + "\n"
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
