@@ -73,8 +73,8 @@ Remove `--dry-run` after checking the displayed paths and command.
 ## Generate four folds
 
 The split generator sorts the case keys and applies shuffled `KFold` with seed `12345`. It reads
-filenames only and writes nnU-Net's `splits_final.json` format. For 156 cases, each fold contains
-117 training cases and 39 validation cases.
+filenames only and writes nnU-Net's `splits_final.json` format. For 155 cases, each fold contains
+116/117 training cases and 38/39 validation cases.
 
 ```bash
 python scripts/segmentation/make_fourfold_splits.py \
