@@ -198,7 +198,7 @@ class NnUNetPipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             config = root / "study.toml"
-            _write_study_config(config, num_training_cases=156)
+            _write_study_config(config, num_training_cases=155)
             dataset_dir = root / "preprocessed" / "Dataset800_PD"
             dataset_dir.mkdir(parents=True)
             (dataset_dir / "splits_final.json").write_text(
