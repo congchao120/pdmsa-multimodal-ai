@@ -192,8 +192,8 @@ def _train_shared_model(
         if imbalance_strategy in {"weighted_sampler", "both"}
         else None
     )
-    batch_size = int(training_config.get("batch_size", 32))
-    workers = int(training_config.get("num_workers", 4))
+    batch_size = int(training_config.get("batch_size", 2))
+    workers = int(training_config.get("num_workers", 2))
     run_seed = seed + fold
     seed_everything(run_seed)
     loaders = {
