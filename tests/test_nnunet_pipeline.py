@@ -28,7 +28,7 @@ def _write_study_config(
                 "",
                 "[model]",
                 'configuration = "3d_fullres"',
-                'trainer = "nnUNetTrainer_100epochs"',
+                'trainer = "nnUNetTrainer_150epochs"',
                 'plans = "nnUNetPlans"',
                 'checkpoint_name = "checkpoint_final.pth"',
                 "",
