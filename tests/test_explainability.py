@@ -104,7 +104,7 @@ class ExplainabilityTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(args.target_class, 0)
+        self.assertEqual(args.target_class, 1)
         self.assertEqual(args.target_layer, 8)
 
 
