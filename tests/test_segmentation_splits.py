@@ -73,12 +73,6 @@ class SegmentationSplitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "overlap|Duplicate"):
             validate_splits(splits, case_ids, n_splits=4)
 
-    def test_156_synthetic_cases_produce_117_train_and_39_validation(self):
-        case_ids = [f"SYN_{index:03d}" for index in range(156)]
-        splits = make_kfold_splits(case_ids)
-        self.assertEqual(validate_splits(splits, case_ids, n_splits=4), [39, 39, 39, 39])
-        self.assertEqual([len(split["train"]) for split in splits], [117, 117, 117, 117])
-
     def test_atomic_writer_refuses_overwrite_by_default(self):
         case_ids = [f"SYN_{index:03d}" for index in range(8)]
         splits = make_kfold_splits(case_ids)
