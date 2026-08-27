@@ -1,4 +1,4 @@
-# nnU-Net four-fold segmentation
+# nnU-Net segmentation
 
 The segmentation workflow produces ROI masks for slice selection and classification. It uses
 three MRI channels (FLAIR, T1w, and T2w), the nnU-Net v2 `3d_fullres` configuration, and four
@@ -70,11 +70,14 @@ python scripts/segmentation/nnunet_pipeline.py plan \
 
 Remove `--dry-run` after checking the displayed paths and command.
 
-## Generate four folds
+## Prespecified folds and optional split generation
 
-The split generator sorts the case keys and applies shuffled `KFold` with seed `12345`. It reads
-filenames only and writes nnU-Net's `splits_final.json` format. For 155 cases, each fold contains
-116/117 training cases and 38/39 validation cases.
+The reported segmentation experiments were trained using four fold assignments prepared before model 
+training. nnU-Net reads these assignments from splits_final.json in the preprocessed dataset directory.
+
+The exact study-specific splits_final.json is not distributed in this public release. The script 
+make_fourfold_splits.py is provided as an optional retraining utility for users who need to create a 
+new deterministic four-fold partition.
 
 ```bash
 python scripts/segmentation/make_fourfold_splits.py \
@@ -85,8 +88,10 @@ python scripts/segmentation/make_fourfold_splits.py \
   --seed 12345
 ```
 
-The training wrapper validates fold coverage, train/validation separation, validation frequency,
-and configured case counts before invoking nnU-Net.
+
+The resulting folds reproduce the four-fold training protocol, but not the exact historical subject 
+membership of the folds used for the manuscript-reported experiments.
+
 
 ## Train folds 0 through 3
 
