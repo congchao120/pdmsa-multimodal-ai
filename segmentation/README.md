@@ -4,4 +4,3 @@ This directory contains the `Dataset800_PD` metadata template used by the four-f
 workflow. Clinical images, labels, case assignments, predictions, and weights must remain outside
 the repository.
 
-See [the segmentation guide](../docs/SEGMENTATION.md) for setup, training, and inference commands.
