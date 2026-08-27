@@ -38,7 +38,7 @@ class SegmentationConfigTests(unittest.TestCase):
         self.assertEqual(split["n_splits"] * validation_cases, total)
 
     def test_configured_trainer_has_explicit_training_length(self):
-        self.assertEqual(self.config["model"]["trainer"], "nnUNetTrainer_100epochs")
+        self.assertEqual(self.config["model"]["trainer"], "nnUNetTrainer_150epochs")
 
 
 if __name__ == "__main__":
