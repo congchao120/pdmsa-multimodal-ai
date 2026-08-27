@@ -21,7 +21,7 @@ python -m pip install -r requirements/segmentation.txt
 Confirm that the configured trainer is available:
 
 ```bash
-python -c "from nnunetv2.training.nnUNetTrainer.variants.training_length.nnUNetTrainer_Xepochs import nnUNetTrainer_100epochs"
+python -c "from nnunetv2.training.nnUNetTrainer.variants.training_length.nnUNetTrainer_Xepochs import nnUNetTrainer_150epochs"
 ```
 
 ## Dataset layout
