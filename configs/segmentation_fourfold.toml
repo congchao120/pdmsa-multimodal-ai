@@ -5,7 +5,7 @@ schema_version = 1
 [study]
 dataset_id = 800
 dataset_name = "Dataset800_PD"
-num_training_cases = 156
+num_training_cases = 155
 file_ending = ".nii.gz"
 channel_names = ["FLAIR", "T1w", "T2w"]
 channel_indices = [0, 1, 2]
@@ -21,7 +21,7 @@ expected_validation_cases_per_fold = 39
 
 [model]
 framework = "nnU-Net v2"
-trainer = "nnUNetTrainer_100epochs"
+trainer = "nnUNetTrainer_150epochs"
 plans = "nnUNetPlans"
 configuration = "3d_fullres"
 checkpoint_name = "checkpoint_final.pth"
