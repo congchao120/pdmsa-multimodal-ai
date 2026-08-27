@@ -80,7 +80,8 @@ Audit the manifest before training:
 pdmsa-audit-manifest --config configs/classification.toml
 pdmsa-audit-manifest --config configs/classification.toml --check-files
 ```
-Fold assignments
+
+## Fold assignments
 
 The reported experiments used prespecified patient-level four-fold assignments that were created before model training and reused throughout the corresponding evaluation.
 
