@@ -101,7 +101,7 @@ python scripts/segmentation/nnunet_pipeline.py train-fourfold \
   --dry-run
 ```
 
-Remove `--dry-run` to train. The configuration selects `nnUNetTrainer_100epochs`, `nnUNetPlans`,
+Remove `--dry-run` to train. The configuration selects `nnUNetTrainer_150epochs`, `nnUNetPlans`,
 `3d_fullres`, and folds 0 through 3.
 
 ## Predict with the four-fold ensemble
