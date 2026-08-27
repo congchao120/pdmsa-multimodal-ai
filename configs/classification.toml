@@ -34,11 +34,11 @@ ignore_mismatched_sizes = true
 
 [training]
 epochs = 150
-batch_size = 32
+batch_size = 2
 optimizer = "adam"
 learning_rate = 0.001
 weight_decay = 0.0
-num_workers = 4
+num_workers = 2
 amp = false
 selection_metric = "val_accuracy"
 
