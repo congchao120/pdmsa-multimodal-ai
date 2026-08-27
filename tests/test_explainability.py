@@ -98,7 +98,7 @@ class ExplainabilityTests(unittest.TestCase):
                 "--output-dir",
                 "cam",
                 "--target-class",
-                "0",
+                "1",
                 "--target-layer",
                 "8",
             ]
