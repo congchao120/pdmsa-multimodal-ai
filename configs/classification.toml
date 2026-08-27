@@ -67,5 +67,5 @@ threshold_inclusive = false
 
 [gradcam]
 # Default Grad-CAM class and ViT encoder layer.
-target_class = 0
+target_class = 1
 target_layer_index = 8
