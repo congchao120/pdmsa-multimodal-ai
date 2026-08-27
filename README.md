@@ -121,7 +121,7 @@ pdmsa-gradcam --config configs/classification.toml \
   --checkpoint outputs/classification/fold_0/best_model_weights.pth \
   --input /path/to/fused_slice.png \
   --output-dir outputs/gradcam/example \
-  --target-class 0 --target-layer 8
+  --target-class 1 --target-layer 8
 ```
 
 The output records class probabilities, target class and layer, model settings, and the
